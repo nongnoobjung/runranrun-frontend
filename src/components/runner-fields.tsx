@@ -1,35 +1,63 @@
 import { inputClass } from "@/components/ui";
 import type { FormQuestion } from "@/lib/types";
 
-/** One runner's details. Field names are `<prefix>.<field>`, the way the server actions read them. */
-export function RunnerFields({ prefix, err }: { prefix: string; err: (name: string) => string | undefined }) {
+/** A saved runner as the API returns it; the ID number is only ever its last four digits. */
+export interface RunnerDefaults {
+  firstNameTh?: string | null;
+  lastNameTh?: string | null;
+  firstNameEn?: string;
+  lastNameEn?: string;
+  gender?: string;
+  birthDate?: string;
+  nationality?: string;
+  idDocType?: string;
+  idDocLast4?: string | null;
+  phone?: string | null;
+  emergencyName?: string | null;
+  emergencyPhone?: string | null;
+}
+
+/**
+ * One runner's details. Field names are `<prefix>.<field>`, the way the server actions read them. With `saved`, the
+ * fields start from a saved runner and the ID number may stay empty: the API reads it from that profile.
+ */
+export function RunnerFields({ prefix, err, saved }: { prefix: string; err: (name: string) => string | undefined; saved?: RunnerDefaults & { id: string } }) {
+  const d: RunnerDefaults = saved ?? {};
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <Field label="ชื่อ (ไทย)" name={`${prefix}.firstNameTh`} error={err(`${prefix}.firstNameTh`)} autoComplete="given-name" />
-      <Field label="นามสกุล (ไทย)" name={`${prefix}.lastNameTh`} error={err(`${prefix}.lastNameTh`)} autoComplete="family-name" />
-      <Field label="First name (อังกฤษ, บนบิบ)" name={`${prefix}.firstNameEn`} error={err(`${prefix}.firstNameEn`)} required />
-      <Field label="Last name (อังกฤษ)" name={`${prefix}.lastNameEn`} error={err(`${prefix}.lastNameEn`)} required />
+      {saved && <input type="hidden" name={`${prefix}.profileId`} value={saved.id} />}
+      <Field label="ชื่อ (ไทย)" name={`${prefix}.firstNameTh`} defaultValue={d.firstNameTh ?? undefined} error={err(`${prefix}.firstNameTh`)} autoComplete="given-name" />
+      <Field label="นามสกุล (ไทย)" name={`${prefix}.lastNameTh`} defaultValue={d.lastNameTh ?? undefined} error={err(`${prefix}.lastNameTh`)} autoComplete="family-name" />
+      <Field label="First name (อังกฤษ, บนบิบ)" name={`${prefix}.firstNameEn`} defaultValue={d.firstNameEn} error={err(`${prefix}.firstNameEn`)} required />
+      <Field label="Last name (อังกฤษ)" name={`${prefix}.lastNameEn`} defaultValue={d.lastNameEn} error={err(`${prefix}.lastNameEn`)} required />
       <label className="flex flex-col gap-1">
         <span className="text-[13px] text-muted">เพศ</span>
-        <select name={`${prefix}.gender`} defaultValue="male" className={inputClass}>
+        <select name={`${prefix}.gender`} defaultValue={d.gender ?? "male"} className={inputClass}>
           <option value="male">ชาย</option>
           <option value="female">หญิง</option>
           <option value="other">ไม่ระบุ</option>
         </select>
       </label>
-      <Field label="วันเกิด" name={`${prefix}.birthDate`} type="date" error={err(`${prefix}.birthDate`)} required />
+      <Field label="วันเกิด" name={`${prefix}.birthDate`} type="date" defaultValue={d.birthDate} error={err(`${prefix}.birthDate`)} required />
       <label className="flex flex-col gap-1">
         <span className="text-[13px] text-muted">ประเภทเอกสาร</span>
-        <select name={`${prefix}.idDocType`} defaultValue="thai_id" className={inputClass}>
+        <select name={`${prefix}.idDocType`} defaultValue={d.idDocType ?? "thai_id"} className={inputClass}>
           <option value="thai_id">บัตรประชาชน</option>
           <option value="passport">พาสปอร์ต</option>
         </select>
       </label>
-      <Field label="เลขบัตร / พาสปอร์ต" name={`${prefix}.idDocNumber`} error={err(`${prefix}.idDocNumber`)} required inputMode="numeric" />
-      <Field label="เบอร์โทร" name={`${prefix}.phone`} type="tel" error={err(`${prefix}.phone`)} autoComplete="tel" />
-      <Field label="สัญชาติ (รหัส 2 ตัว)" name={`${prefix}.nationality`} defaultValue="TH" maxLength={2} error={err(`${prefix}.nationality`)} />
-      <Field label="ผู้ติดต่อฉุกเฉิน" name={`${prefix}.emergencyName`} error={err(`${prefix}.emergencyName`)} required />
-      <Field label="เบอร์ผู้ติดต่อฉุกเฉิน" name={`${prefix}.emergencyPhone`} type="tel" error={err(`${prefix}.emergencyPhone`)} required />
+      <Field
+        label="เลขบัตร / พาสปอร์ต"
+        name={`${prefix}.idDocNumber`}
+        error={err(`${prefix}.idDocNumber`)}
+        required={!saved}
+        inputMode="numeric"
+        placeholder={saved?.idDocLast4 ? `ใช้เลขที่บันทึกไว้ ••••${saved.idDocLast4}` : undefined}
+      />
+      <Field label="เบอร์โทร" name={`${prefix}.phone`} type="tel" defaultValue={d.phone ?? undefined} error={err(`${prefix}.phone`)} autoComplete="tel" />
+      <Field label="สัญชาติ (รหัส 2 ตัว)" name={`${prefix}.nationality`} defaultValue={d.nationality ?? "TH"} maxLength={2} error={err(`${prefix}.nationality`)} />
+      <Field label="ผู้ติดต่อฉุกเฉิน" name={`${prefix}.emergencyName`} defaultValue={d.emergencyName ?? undefined} error={err(`${prefix}.emergencyName`)} required />
+      <Field label="เบอร์ผู้ติดต่อฉุกเฉิน" name={`${prefix}.emergencyPhone`} type="tel" defaultValue={d.emergencyPhone ?? undefined} error={err(`${prefix}.emergencyPhone`)} required />
     </div>
   );
 }

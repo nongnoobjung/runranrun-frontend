@@ -100,10 +100,21 @@ function runnerOf(formData: FormData, i: number, fieldErrors: Record<string, str
     const v = formData.get(`p${i}.${f}`);
     runner[f] = typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
   }
+  // A saved runner's ID number stays on the server; the API reads it from the profile.
+  const profileId = formData.get(`p${i}.profileId`);
   for (const f of ["firstNameEn", "lastNameEn", "birthDate", "idDocNumber", "emergencyName", "emergencyPhone"] as const) {
-    if (!runner[f]) fieldErrors[`p${i}.${f}`] = "จำเป็นต้องกรอก";
+    if (!runner[f] && !(f === "idDocNumber" && profileId)) fieldErrors[`p${i}.${f}`] = "จำเป็นต้องกรอก";
   }
   return { ...runner, nationality: runner.nationality ?? "TH" };
+}
+
+/** The saved runner a form started from, and whether to save a newly typed one. */
+function profileChoiceOf(formData: FormData, i: number) {
+  const profileId = formData.get(`p${i}.profileId`);
+  return {
+    profileId: typeof profileId === "string" && profileId ? profileId : undefined,
+    saveProfile: formData.get(`p${i}.saveProfile`) === "1" || undefined,
+  };
 }
 
 /** Collects one runner's answers; see the field names in the checkout form's Questions. The API checks them. */
@@ -139,6 +150,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
       isSelf: formData.get("self") === String(i),
       runner,
       answers: answersOf(formData, i),
+      ...profileChoiceOf(formData, i),
     };
   });
   const buyer = { name: get("buyer.name"), email: get("buyer.email"), phone: get("buyer.phone") };
@@ -278,7 +290,7 @@ export async function acceptTransfer(transferId: string, _prev: FormState, formD
   if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนรับสิทธิ์", fieldErrors };
   const res = await api<{ status: "completed"; registrationId: string } | { status: "pending_payment"; orderId: string }>(
     `/v1/me/transfers/${encodeURIComponent(transferId)}/accept`,
-    { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0) } },
+    { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0), ...profileChoiceOf(formData, 0) } },
   );
   if (!res.ok) return { error: problemMessage(res.problem), fieldErrors: toFieldErrors(res.problem.errors) };
   if (res.data.status === "pending_payment") redirect(`/orders/${res.data.orderId}/pay`);
@@ -304,4 +316,37 @@ export async function requestRaceChange(registrationId: string, _prev: FormState
 export async function cancelRaceChange(raceChangeId: string, registrationId: string): Promise<void> {
   await api(`/v1/me/race-changes/${encodeURIComponent(raceChangeId)}`, { method: "DELETE", auth: true });
   redirect(`/me/registrations/${registrationId}/race-change`);
+}
+
+// ---------------------------------------------------------------- saved runners
+
+const PROFILE_EXTRAS = ["nickname", "emergencyRelation", "shirtSize", "clubName"] as const;
+
+/** Creates a saved runner, or updates one (where an empty ID number keeps the saved one). */
+export async function saveProfile(profileId: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
+  const fieldErrors: Record<string, string> = {};
+  const runner = runnerOf(formData, 0, fieldErrors);
+  if (profileId && fieldErrors["p0.idDocNumber"]) delete fieldErrors["p0.idDocNumber"];
+  if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนบันทึก", fieldErrors };
+  const body: Record<string, unknown> = { ...runner, isSelf: formData.get("isSelf") === "on" };
+  for (const f of PROFILE_EXTRAS) {
+    const v = String(formData.get(f) ?? "").trim();
+    if (v) body[f] = v;
+  }
+  if (!body.idDocNumber) delete body.idDocNumber;
+  const res = await api(profileId ? `/v1/me/profiles/${encodeURIComponent(profileId)}` : "/v1/me/profiles", {
+    method: profileId ? "PATCH" : "POST",
+    auth: true,
+    body,
+  });
+  if (!res.ok) {
+    if (res.status === 401) redirect("/login?next=/me/profiles");
+    return { error: problemMessage(res.problem), fieldErrors: toFieldErrors(res.problem.errors?.map((e) => ({ ...e, path: `runner.${e.path}` }))) };
+  }
+  redirect("/me/profiles");
+}
+
+export async function deleteProfile(profileId: string): Promise<void> {
+  await api(`/v1/me/profiles/${encodeURIComponent(profileId)}`, { method: "DELETE", auth: true });
+  redirect("/me/profiles");
 }

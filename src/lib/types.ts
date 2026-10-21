@@ -280,3 +280,27 @@ export interface Transfer {
   registrationNo?: string;
   runner?: { en: string; th: string | null };
 }
+
+export interface RunnerProfile {
+  id: string;
+  isSelf: boolean;
+  nickname: string | null;
+  firstNameTh: string | null;
+  lastNameTh: string | null;
+  firstNameEn: string;
+  lastNameEn: string;
+  gender: "male" | "female" | "other";
+  birthDate: string;
+  nationality: string;
+  idDocType: "thai_id" | "passport";
+  idDocLast4: string | null;
+  email: string | null;
+  phone: string | null;
+  bloodType: string;
+  emergencyName: string | null;
+  emergencyPhone: string | null;
+  emergencyRelation: string | null;
+  shirtSize: string | null;
+  clubName: string | null;
+  updatedAt: string;
+}

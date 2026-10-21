@@ -121,6 +121,8 @@ const PROBLEM_TH: Record<string, string> = {
   RACE_CHANGE_CLOSED: "หมดเวลาเปลี่ยนระยะของงานนี้แล้ว",
   RACE_CHANGE_IN_PROGRESS: "มีการเปลี่ยนระยะที่รอชำระเงินอยู่",
   RACE_NOT_ELIGIBLE: "อายุหรือเพศของผู้วิ่งไม่ตรงเงื่อนไขของระยะนี้",
+  PROFILE_EXISTS: "บันทึกผู้วิ่งที่ใช้เลขบัตรนี้ไว้แล้ว แก้ไขคนเดิมแทน",
+  TOO_MANY_PROFILES: "บันทึกผู้วิ่งได้สูงสุด 20 คน ลบคนที่ไม่ใช้แล้วก่อน",
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */
@@ -154,4 +156,10 @@ export function answerText(value: unknown): string {
   if (Array.isArray(value)) return value.join(", ");
   if (typeof value === "boolean") return value ? "ใช่" : "ไม่";
   return String(value);
+}
+
+/** How a saved runner shows in lists and pickers: "ตัวฉัน · nickname · name". */
+export function profileLabel(p: { isSelf: boolean; nickname: string | null; firstNameTh: string | null; lastNameTh: string | null; firstNameEn: string; lastNameEn: string }): string {
+  const name = p.firstNameTh ? `${p.firstNameTh} ${p.lastNameTh ?? ""}`.trim() : `${p.firstNameEn} ${p.lastNameEn}`;
+  return [p.isSelf ? "ตัวฉัน" : null, p.nickname, name].filter(Boolean).join(" · ");
 }

@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { cancelCheckout } from "@/app/actions";
 import { api, apiOrThrow } from "@/lib/api";
-import type { CheckoutSession, EventDetail } from "@/lib/types";
+import type { CheckoutSession, EventDetail, RunnerProfile } from "@/lib/types";
 import { CheckoutForm, type SizeOption, type Slot } from "./checkout-form";
 
 export const metadata: Metadata = { title: "กรอกข้อมูลผู้วิ่ง" };
@@ -29,7 +29,10 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
     notFound();
   }
   const session = res.data;
-  const event = await apiOrThrow<EventDetail>(`/v1/events/${encodeURIComponent(session.eventSlug)}`);
+  const [event, profiles] = await Promise.all([
+    apiOrThrow<EventDetail>(`/v1/events/${encodeURIComponent(session.eventSlug)}`),
+    api<{ items: RunnerProfile[] }>("/v1/me/profiles", { auth: true }),
+  ]);
 
   if (session.status !== "active") {
     return (
@@ -67,6 +70,7 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
         slots={slots}
         sizes={sizes}
         questions={event.questions ?? []}
+        profiles={profiles.ok ? profiles.data.items : []}
       />
       <form action={cancelCheckout.bind(null, session.id, event.slug)} className="self-center">
         <button type="submit" className="px-4 py-2 text-sm text-muted underline hover:text-ink">
