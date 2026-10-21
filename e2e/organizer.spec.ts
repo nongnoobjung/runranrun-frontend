@@ -5,7 +5,7 @@ const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
 const SEEDED_EVENT = "riverside-night-run-2027";
 
-async function apiCall<T = any>(path: string, init: { method?: string; token?: string; body?: unknown; key?: boolean } = {}): Promise<T> {
+async function apiCall<T>(path: string, init: { method?: string; token?: string; body?: unknown; key?: boolean } = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method: init.method ?? (init.body ? "POST" : "GET"),
     headers: {
@@ -19,18 +19,24 @@ async function apiCall<T = any>(path: string, init: { method?: string; token?: s
   return res.json() as Promise<T>;
 }
 
+interface SeededEvent {
+  id: string;
+  races: { id: string; code: string }[];
+  products: { type: string; variants: { id: string; label: string }[] }[];
+}
+
 /** Registers and pays for one 10K place on the seeded event straight through the API. */
 async function paidRunner(firstNameTh: string): Promise<string> {
-  const { accessToken: token } = await apiCall("/v1/dev/login", { body: { email: `e2e-runner-${randomUUID()}@example.com` } });
-  const event = await apiCall(`/v1/events/${SEEDED_EVENT}`);
-  const race = event.races.find((r: { code: string }) => r.code === "10K");
-  const shirt = event.products.find((p: { type: string }) => p.type === "shirt").variants.find((v: { label: string }) => v.label === "M");
-  const session = await apiCall("/v1/checkout/sessions", {
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-runner-${randomUUID()}@example.com` } });
+  const event = await apiCall<SeededEvent>(`/v1/events/${SEEDED_EVENT}`);
+  const race = event.races.find((r) => r.code === "10K")!;
+  const shirt = event.products.find((p) => p.type === "shirt")!.variants.find((v) => v.label === "M")!;
+  const session = await apiCall<{ id: string }>("/v1/checkout/sessions", {
     token,
     body: { eventId: event.id, races: [{ raceId: race.id, quantity: 1 }], variants: [{ variantId: shirt.id, quantity: 1 }] },
   });
   const idDocNumber = `1${Date.now().toString().slice(-9)}${Math.floor(Math.random() * 900 + 100)}`;
-  const order = await apiCall("/v1/orders", {
+  const order = await apiCall<{ id: string; registrations: { registrationNo: string }[] }>("/v1/orders", {
     token,
     key: true,
     body: {
@@ -50,7 +56,7 @@ async function paidRunner(firstNameTh: string): Promise<string> {
   });
   await apiCall(`/v1/orders/${order.id}/payments`, { token, key: true, body: { method: "promptpay" } });
   await apiCall(`/v1/dev/orders/${order.id}/complete-payment`, { body: {} });
-  return order.registrations[0].registrationNo as string;
+  return order.registrations[0].registrationNo;
 }
 
 /** Signs in through the login page and lands on the organisation's event list. */
