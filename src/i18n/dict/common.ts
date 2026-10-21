@@ -1,0 +1,89 @@
+import { defineDict } from "../define";
+
+/** The site frame and words shared across pages. */
+export default defineDict({
+  th: {
+    meta: {
+      title: "ก้าว · หางานวิ่งทั่วไทย",
+      template: "%s · ก้าว",
+      description: "หางานวิ่งใกล้บ้าน สมัครในไม่กี่นาที จ่ายด้วย PromptPay แล้วรับบัตรวิ่งพร้อม QR",
+    },
+    brand: "ก้าว",
+    nav: {
+      label: "เมนูหลัก",
+      events: "หางานวิ่ง",
+      results: "ผลการแข่งขัน",
+      organizers: "สำหรับผู้จัดงาน",
+      signIn: "เข้าสู่ระบบ",
+      myEvents: "งานของฉัน",
+      signOut: "ออกจากระบบ",
+    },
+    language: { switchTo: "English", short: "EN", label: "เปลี่ยนภาษา" },
+    footer: {
+      tagline: "รับสมัครงานวิ่งทั่วไทย สำหรับนักวิ่งและผู้จัดงาน",
+      runners: "นักวิ่ง",
+      results: "ผลการแข่งขัน",
+      howTo: "วิธีสมัคร",
+      refundPolicy: "นโยบายคืนเงิน",
+      info: "ข้อมูล",
+      privacy: "นโยบายความเป็นส่วนตัว (PDPA)",
+      terms: "เงื่อนไขการใช้งาน",
+    },
+    availability: { open: "เปิดรับ", almost_full: "ใกล้เต็ม", sold_out: "เต็มแล้ว", not_open: "ยังไม่เปิด", closed: "ปิดรับแล้ว" },
+    notFound: {
+      title: "ไม่พบหน้านี้",
+      text: "ลิงก์อาจหมดอายุ หรือคุณไม่มีสิทธิ์ดูข้อมูลนี้",
+      home: "กลับหน้าแรก",
+    },
+    error: {
+      title: "มีบางอย่างผิดพลาด",
+      text: "ระบบไม่ตอบสนองชั่วคราว ลองใหม่อีกครั้งในอีกสักครู่",
+      retry: "ลองอีกครั้ง",
+    },
+    saving: "กำลังบันทึก…",
+    loading: "กำลังโหลด…",
+    required: "จำเป็นต้องกรอก",
+  },
+  en: {
+    meta: {
+      title: "Kao · Find running events across Thailand",
+      template: "%s · Kao",
+      description: "Find a run near you, register in minutes, pay with PromptPay and get your race ticket with a QR code",
+    },
+    brand: "ก้าว",
+    nav: {
+      label: "Main menu",
+      events: "Find events",
+      results: "Results",
+      organizers: "For organisers",
+      signIn: "Sign in",
+      myEvents: "My events",
+      signOut: "Sign out",
+    },
+    language: { switchTo: "ภาษาไทย", short: "ไทย", label: "Change language" },
+    footer: {
+      tagline: "Running event registration across Thailand, for runners and organisers",
+      runners: "Runners",
+      results: "Results",
+      howTo: "How to register",
+      refundPolicy: "Refund policy",
+      info: "About",
+      privacy: "Privacy policy (PDPA)",
+      terms: "Terms of use",
+    },
+    availability: { open: "Open", almost_full: "Almost full", sold_out: "Full", not_open: "Not open yet", closed: "Closed" },
+    notFound: {
+      title: "Page not found",
+      text: "The link may have expired, or you may not have access to this page",
+      home: "Back to home",
+    },
+    error: {
+      title: "Something went wrong",
+      text: "The system is not responding right now. Please try again in a moment",
+      retry: "Try again",
+    },
+    saving: "Saving…",
+    loading: "Loading…",
+    required: "Required",
+  },
+});
