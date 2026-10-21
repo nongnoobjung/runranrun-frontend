@@ -324,6 +324,35 @@ export interface ResultsImport {
   applied: boolean;
 }
 
+/** Who a broadcast goes to: the runner-list filters. */
+export interface BroadcastAudience {
+  raceId: string | null;
+  status: "confirmed" | "pending";
+  pickup: "picked" | "not_picked" | null;
+}
+
+export interface Broadcast {
+  id: string;
+  status: "draft" | "scheduled" | "sending" | "sent" | "cancelled";
+  channels: string[];
+  subject: string;
+  body: string;
+  audience: BroadcastAudience;
+  scheduledAt: string | null;
+  sentAt: string | null;
+  recipientCount: number | null;
+  sentCount: number;
+  failedCount: number;
+  createdBy: string | null;
+  createdAt: string;
+}
+
+export interface BroadcastPreview {
+  count: number;
+  withoutEmail: number;
+  sample: { to: string; subject: string; body: string } | null;
+}
+
 export interface CheckinRegistration extends OrgRegistration {
   emergencyName: string | null;
 }

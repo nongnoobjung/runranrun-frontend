@@ -6,7 +6,7 @@ import { Logo } from "@/components/ui";
 import { can, EVENT_STATUS, eventPath, membership, orgEvent } from "@/lib/org";
 import { EventNav, type NavItem } from "./event-nav";
 
-const SOON = ["โอนสิทธิ์ / เปลี่ยนระยะ", "ส่งข่าว"];
+const SOON = ["โอนสิทธิ์ / เปลี่ยนระยะ"];
 
 export default function EventLayout({ children, params }: LayoutProps<"/organizer/[orgId]/events/[eventId]">) {
   return (
@@ -41,6 +41,7 @@ async function Sidebar({ params }: Pick<LayoutProps<"/organizer/[orgId]/events/[
     ...(can(org.role, "manage_refunds") ? [{ href: p("requests"), label: "คำขอคืนเงิน" }] : []),
     ...(can(org.role, "checkin") ? [{ href: p("checkin"), label: "หน้างาน · รับของ" }] : []),
     { href: p("results"), label: "ผลการแข่งขัน" },
+    ...(can(org.role, "manage_event") ? [{ href: p("broadcasts"), label: "ส่งข่าว" }] : []),
     ...(can(org.role, "view_finance") ? [{ href: p("finance"), label: "การเงิน" }] : []),
     { href: p("team"), label: "ทีมงาน" },
   ];
