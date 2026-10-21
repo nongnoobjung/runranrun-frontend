@@ -72,6 +72,17 @@ export function distanceLabel(km: number): string {
   return `${km}K`;
 }
 
+/** A waiting room estimate in words: 45 → "ไม่ถึง 1 นาที", 400 → "ประมาณ 7 นาที", 5400 → "ประมาณ 1 ชม. 30 นาที" (English "about 1 hr 30 min"). */
+export function waitLabel(seconds: number, locale: Locale = "th"): string {
+  const th = locale === "th";
+  if (seconds < 60) return th ? "ไม่ถึง 1 นาที" : "less than a minute";
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return th ? `ประมาณ ${minutes} นาที` : `about ${minutes} min`;
+  const rest = minutes % 60;
+  const hours = Math.floor(minutes / 60).toLocaleString();
+  return th ? `ประมาณ ${hours} ชม.${rest ? ` ${rest} นาที` : ""}` : `about ${hours} hr${rest ? ` ${rest} min` : ""}`;
+}
+
 /** Minutes left as mm:ss, never negative. */
 export function countdown(msLeft: number): string {
   const total = Math.max(0, Math.floor(msLeft / 1000));
@@ -148,6 +159,23 @@ const PROBLEM_TH = {
   RACE_NOT_ELIGIBLE: "อายุหรือเพศของผู้วิ่งไม่ตรงเงื่อนไขของระยะนี้",
   PROFILE_EXISTS: "บันทึกผู้วิ่งที่ใช้เลขบัตรนี้ไว้แล้ว แก้ไขคนเดิมแทน",
   TOO_MANY_PROFILES: "บันทึกผู้วิ่งได้สูงสุด 20 คน ลบคนที่ไม่ใช้แล้วก่อน",
+  RATE_LIMITED: "มีคนใช้งานพร้อมกันจำนวนมาก รอสักครู่แล้วลองใหม่",
+  QUEUE_REQUIRED: "งานนี้ต้องเข้าคิวก่อนสมัคร",
+  QUEUE_TOKEN_EXPIRED: "หมดเวลาสมัครของรอบคิวคุณแล้ว เข้าคิวใหม่อีกครั้ง",
+  QUEUE_UNAVAILABLE: "ระบบคิวไม่พร้อมใช้งานตอนนี้ ลองใหม่อีกครั้ง",
+  WAITING_ROOM_UNAVAILABLE: "เซิร์ฟเวอร์นี้ยังเปิดระบบคิวไม่ได้ ติดต่อทีมงานก้าว",
+  // Organiser sign-up and KYC
+  TOO_MANY_PENDING_TEAMS: "คุณมีทีมที่รอตรวจเอกสารอยู่ 3 ทีมแล้ว ส่งเอกสารให้ครบก่อนเปิดทีมใหม่",
+  KYC_LOCKED: "ชื่อตามทะเบียนและเลขผู้เสียภาษีผ่านการตรวจแล้ว ติดต่อทีมงานก้าวหากต้องแก้",
+  UNSUPPORTED_FILE_TYPE: "รองรับเฉพาะไฟล์ PDF, JPG หรือ PNG",
+  UNSUPPORTED_MEDIA_TYPE: "รองรับเฉพาะไฟล์ PDF, JPG หรือ PNG",
+  FILE_TOO_LARGE: "ไฟล์ใหญ่เกิน 10 MB",
+  FILE_REQUIRED: "เลือกไฟล์ก่อน",
+  EMPTY_FILE: "ไฟล์ว่างเปล่า",
+  TOO_MANY_PARTS: "อัปโหลดได้ครั้งละหนึ่งไฟล์",
+  TOO_MANY_DOCUMENTS: "ทีมหนึ่งเก็บเอกสารได้ 20 ไฟล์ ลบไฟล์เก่าที่ไม่ใช้ก่อน",
+  DOCUMENT_APPROVED: "เอกสารที่ตรวจผ่านแล้วลบไม่ได้",
+  NO_BANK_SUBMISSION: "ผู้จัดยังไม่ได้ส่งบัญชีรับเงินมาให้ยืนยัน",
 };
 
 /** English for every code above: a missing one fails typecheck. */
@@ -217,12 +245,35 @@ const PROBLEM_EN: Record<keyof typeof PROBLEM_TH, string> = {
   RACE_NOT_ELIGIBLE: "The runner's age or gender does not meet this race's conditions",
   PROFILE_EXISTS: "A saved runner with this ID number already exists. Edit that one instead",
   TOO_MANY_PROFILES: "You can save up to 20 runners. Delete one you no longer use first",
+  RATE_LIMITED: "Lots of people are here at once. Wait a moment and try again",
+  QUEUE_REQUIRED: "This event needs you to queue before registering",
+  QUEUE_TOKEN_EXPIRED: "Your turn from the queue has run out. Please join the queue again",
+  QUEUE_UNAVAILABLE: "The queue is not available right now. Please try again",
+  WAITING_ROOM_UNAVAILABLE: "This server cannot run the queue yet. Contact the Kao team",
+  TOO_MANY_PENDING_TEAMS: "You already have 3 teams waiting for document checks. Finish their documents before opening a new team",
+  KYC_LOCKED: "The registered name and tax ID have been verified. Contact the Kao team if they need changing",
+  UNSUPPORTED_FILE_TYPE: "Only PDF, JPG or PNG files are supported",
+  UNSUPPORTED_MEDIA_TYPE: "Only PDF, JPG or PNG files are supported",
+  FILE_TOO_LARGE: "The file is larger than 10 MB",
+  FILE_REQUIRED: "Choose a file first",
+  EMPTY_FILE: "The file is empty",
+  TOO_MANY_PARTS: "Upload one file at a time",
+  TOO_MANY_DOCUMENTS: "A team can keep up to 20 documents. Delete old ones you no longer need first",
+  DOCUMENT_APPROVED: "Approved documents cannot be deleted",
+  NO_BANK_SUBMISSION: "The organiser has not sent a payout bank account to confirm yet",
 };
 
 const PROBLEMS: Record<Locale, Record<string, string>> = { th: PROBLEM_TH, en: PROBLEM_EN };
 
 /** A message for an API problem code in the page's language, falling back to the API's own detail. */
-export function problemMessage(p: { code: string; title: string; detail?: string }, locale: Locale = "th"): string {
+export function problemMessage(
+  p: { code: string; title: string; detail?: string; retryAfterSeconds?: unknown },
+  locale: Locale = "th",
+): string {
+  if (p.code === "RATE_LIMITED" && typeof p.retryAfterSeconds === "number") {
+    const seconds = p.retryAfterSeconds.toLocaleString();
+    return locale === "th" ? `มีคนใช้งานพร้อมกันจำนวนมาก รอ ${seconds} วินาทีแล้วลองใหม่` : `Lots of people are here at once. Wait ${seconds} seconds and try again`;
+  }
   return PROBLEMS[locale][p.code] ?? p.detail ?? p.title;
 }
 

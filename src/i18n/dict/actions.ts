@@ -23,6 +23,7 @@ export default defineDict({
     completeAccept: "กรอกข้อมูลให้ครบก่อนรับสิทธิ์",
     pickNewRace: "เลือกระยะที่จะเปลี่ยนไป",
     completeProfile: "กรอกข้อมูลให้ครบก่อนบันทึก",
+    eventNotFound: "ไม่พบงานนี้",
   },
   en: {
     emailInvalid: "Enter a valid email address",
@@ -45,5 +46,6 @@ export default defineDict({
     completeAccept: "Fill in all the required fields to accept",
     pickNewRace: "Choose the race to change to",
     completeProfile: "Fill in all the required fields to save",
+    eventNotFound: "Event not found",
   },
 });

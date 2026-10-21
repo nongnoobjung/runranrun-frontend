@@ -15,6 +15,33 @@ export default defineDict({
     rank: (n: number | null) => `อันดับ ${n}`,
     bib: (bib: string) => `บิบ ${bib}`,
 
+    /** The waiting room: on the event page and at /events/[slug]/queue. */
+    queue: {
+      title: "คิวสมัคร",
+      admitted: "ถึงคิวของคุณแล้ว",
+      admittedUntil: (time: string) => ` เลือกระยะและกดสมัครภายใน ${time} น.`,
+      racesLabel: "ระยะที่เปิดรับ",
+      busy: "งานนี้มีคนสมัครพร้อมกันจำนวนมาก กดเข้าคิวก่อน ระบบจะปล่อยเข้าเลือกระยะทีละรอบตามลำดับ",
+      join: "เข้าคิวสมัคร",
+      heading: "คุณอยู่ในคิวสมัคร",
+      intro: "งานนี้มีคนสมัครพร้อมกันจำนวนมาก ระบบจะปล่อยเข้าสมัครทีละรอบตามลำดับคิว",
+      expired: "หมดเวลาสมัครของรอบที่แล้ว คุณได้เข้าคิวใหม่อีกครั้ง",
+      yourPlace: "คิวของคุณ",
+      placeLabel: (n: string) => `คิวที่ ${n}`,
+      next: "คุณเป็นคิวถัดไป",
+      ahead: (n: string) => `มีคนอยู่ก่อนคุณ ${n} คน`,
+      joining: "กำลังเข้าคิว…",
+      wait: "เวลารอโดยประมาณ ",
+      rate: (n: string) => `ปล่อยเข้าสมัครนาทีละ ${n} คน`,
+      opens: (date: string, time: string) => `เปิดรับสมัคร ${date} เวลา ${time} น. ระบบจะเริ่มปล่อยคิวตอนนั้น`,
+      offline: "เชื่อมต่อไม่ได้ กำลังลองใหม่",
+      tips: [
+        "หน้านี้อัปเดตเอง ไม่ต้องกดรีเฟรช ถึงคิวแล้วจะพาไปเลือกระยะทันที",
+        "ปิดหน้านี้แล้วกลับมาใหม่ ลำดับคิวของคุณยังอยู่",
+      ],
+      holdTip: (minutes: number) => `ถึงคิวแล้วมีเวลาเริ่มสมัครไม่กี่นาที เลือกระยะแล้วระบบจองที่ไว้ให้อีก ${minutes} นาทีระหว่างกรอกข้อมูล`,
+    },
+
     list: {
       title: "หางานวิ่ง",
       distances: { short: "ต่ำกว่า 10K", "10k": "10K", half: "ฮาล์ฟ 21K", full: "มาราธอน", ultra: "อัลตรา" },
@@ -131,6 +158,32 @@ export default defineDict({
     types: { road: "Road", trail: "Trail", ultra: "Ultra", fun_run: "Fun run", virtual: "Virtual" },
     rank: (n) => `Rank ${n}`,
     bib: (bib) => `Bib ${bib}`,
+
+    queue: {
+      title: "Registration queue",
+      admitted: "It's your turn",
+      admittedUntil: (time) => ` Choose a race and register by ${time}.`,
+      racesLabel: "Races open",
+      busy: "Lots of people are registering at once. Join the queue first; we let people in to choose a race in turn",
+      join: "Join the queue",
+      heading: "You're in the queue",
+      intro: "Lots of people are registering at once. We let people in to register in turn, in queue order",
+      expired: "Your last turn ran out, so you have joined the queue again",
+      yourPlace: "Your place",
+      placeLabel: (n) => `Place ${n}`,
+      next: "You're next",
+      ahead: (n) => `${n} ${n === "1" ? "person" : "people"} ahead of you`,
+      joining: "Joining the queue…",
+      wait: "Estimated wait ",
+      rate: (n) => `${n} ${n === "1" ? "person" : "people"} let in per minute`,
+      opens: (date, time) => `Registration opens ${date} at ${time}; the queue starts moving then`,
+      offline: "Can't connect. Trying again",
+      tips: [
+        "This page updates itself, no need to refresh. When it's your turn we take you to choose a race",
+        "You can close this page and come back; you keep your place",
+      ],
+      holdTip: (minutes) => `When it's your turn you have a few minutes to start. Once you choose a race we hold your places for ${minutes} minutes while you fill in the details`,
+    },
 
     list: {
       title: "Find events",

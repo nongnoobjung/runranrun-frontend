@@ -67,7 +67,8 @@ export interface EventDetail {
   registration: { opensAt: string | null; closesAt: string | null; holdMinutes: number };
   /** Set once the organiser has published race results. */
   resultsPublishedAt: string | null;
-  policy: { allowTransfer: boolean; allowRaceChange: boolean; allowRefund: boolean; waitlist: boolean };
+  /** waitingRoom: runners queue before they can pick races (see QueueStatus). */
+  policy: { allowTransfer: boolean; allowRaceChange: boolean; allowRefund: boolean; waitlist: boolean; waitingRoom: boolean };
   organizer: { slug: string; name: string; logoUrl: string | null };
   races: RaceDetail[];
   products: ProductDetail[];
@@ -323,4 +324,17 @@ export interface RunnerProfile {
   shirtSize: string | null;
   clubName: string | null;
   updatedAt: string;
+}
+
+/** The signed-in runner's place in an event's waiting room (GET /v1/checkout/queue/:eventId). */
+export interface QueueStatus {
+  eventId: string;
+  status: "not_required" | "not_joined" | "waiting" | "admitted";
+  /** 1 = next to be let in. */
+  position: number | null;
+  waiting: number;
+  admitPerMinute: number;
+  estimatedWaitSeconds: number | null;
+  opensAt: string | null;
+  admission: { token: string; expiresAt: string } | null;
 }

@@ -95,6 +95,9 @@ export interface OrgEvent {
   /** Share paid back, in basis points (8000 = 80%). */
   refundPercentBps: number;
   waitlistEnabled: boolean;
+  /** Runners queue and are let into registration at queueAdmitPerMinute. */
+  useWaitingRoom: boolean;
+  queueAdmitPerMinute: number;
   allowTransfer: boolean;
   /** Paid by whoever takes the place over. */
   transferFeeSatang: number;
@@ -403,6 +406,7 @@ const PERMISSIONS = {
   view_pii: ["owner", "admin"],
   checkin: ["owner", "admin", "staff"],
   manage_team: ["owner"],
+  manage_kyc: ["owner"],
   manage_refunds: ["owner", "admin", "finance"],
   view_finance: ["owner", "admin", "finance"],
 } as const satisfies Record<string, readonly OrgRole[]>;
@@ -437,6 +441,81 @@ export const REGISTRATION_STATUS: Record<RegistrationStatus, { label: string; cl
   refunded: { label: "คืนเงินแล้ว", className: "bg-ice text-muted" },
 };
 
+export type KycDocType = "company_certificate" | "vat_registration" | "id_card" | "bank_book" | "other";
+export type KycDocStatus = "pending" | "approved" | "rejected";
+export type KycReadinessKey = "company" | "id_card" | "bank_book" | "bank_account";
+
+export interface KycDocument {
+  id: string;
+  type: KycDocType;
+  fileName: string | null;
+  contentType: string | null;
+  sizeBytes: number | null;
+  status: KycDocStatus;
+  rejectReason: string | null;
+  reviewedAt: string | null;
+  createdAt: string;
+}
+
+export interface KycAddress {
+  line1: string;
+  subdistrict: string;
+  district: string;
+  province: string;
+  postcode: string;
+}
+
+/** A team's KYC as its members see it (GET /v1/org/:orgId/kyc). */
+export interface OrgKyc {
+  id: string;
+  slug: string;
+  nameTh: string;
+  nameEn: string | null;
+  status: MyOrg["status"];
+  /** Why the team was suspended. */
+  statusNote: string | null;
+  kycApprovedAt: string | null;
+  legalName: string | null;
+  taxId: string | null;
+  isVatRegistered: boolean;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  address: KycAddress | null;
+  documents: KycDocument[];
+  /** The account payouts go to, checked by the platform. */
+  bankAccount: (PayoutAccount & { submittedAt: string }) | null;
+  /** What the owner sent that the platform has not verified yet. */
+  submittedBankAccount: (PayoutAccount & { submittedAt: string }) | null;
+  readiness: { key: KycReadinessKey; ok: boolean }[];
+}
+
+export const KYC_DOC_TYPE: Record<KycDocType, string> = {
+  id_card: "บัตรประชาชนผู้มีอำนาจ",
+  bank_book: "หน้าสมุดบัญชี",
+  company_certificate: "หนังสือรับรองบริษัท",
+  vat_registration: "ภ.พ.20",
+  other: "อื่น ๆ",
+};
+
+export const KYC_DOC_STATUS: Record<KycDocStatus, { label: string; className: string }> = {
+  pending: { label: "รอตรวจ", className: "bg-warn-soft text-warn" },
+  approved: { label: "ผ่าน", className: "bg-ok-soft text-ok" },
+  rejected: { label: "ไม่ผ่าน", className: "bg-bad-soft text-bad" },
+};
+
+export const KYC_READINESS: Record<KycReadinessKey, string> = {
+  company: "ข้อมูลบริษัทและที่อยู่",
+  id_card: "บัตรประชาชนผู้มีอำนาจ",
+  bank_book: "หน้าสมุดบัญชี",
+  bank_account: "บัญชีรับเงิน",
+};
+
+/** "1.2 MB" / "640 KB". */
+export function fileSize(bytes: number | null): string {
+  if (bytes === null) return "";
+  return bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
 /** Sends people who are signed out to the login page, and outsiders to a 404, the way the API does. */
 async function orThrow<T>(res: ApiResult<T>, next: string): Promise<T> {
   if (res.ok) return res.data;
@@ -467,6 +546,8 @@ export const orgEvent = cache(async (orgId: string, eventId: string): Promise<Or
 export async function orgGet<T>(orgId: string, path: string, next = "/organizer"): Promise<T> {
   return orThrow(await api<T>(`/v1/org/${orgId}${path}`, { auth: true }), next);
 }
+
+export const orgKyc = cache(async (orgId: string): Promise<OrgKyc> => orgGet<OrgKyc>(orgId, "/kyc", `/organizer/${orgId}/kyc`));
 
 export function eventPath(orgId: string, eventId: string, section = ""): string {
   return `/organizer/${orgId}/events/${eventId}${section ? `/${section}` : ""}`;

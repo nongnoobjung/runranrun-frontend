@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { EmptyState, Pill, smallButtonClass } from "@/components/backoffice";
+import { EmptyState, Pill, smallButtonClass, smallGhostButtonClass } from "@/components/backoffice";
 import { EventBanner } from "@/components/banner";
 import { OrganizerBar } from "@/components/organizer-bar";
 import { Meter } from "@/components/ui";
 import { baht, fmt } from "@/lib/format";
 import { can, EVENT_STATUS, eventPath, membership, orgGet, type OrgEventSummary } from "@/lib/org";
+import { KycNotice } from "./kyc/kyc-notice";
 
 export default function OrganizationPage({ params }: PageProps<"/organizer/[orgId]">) {
   return (
@@ -41,17 +42,18 @@ async function Events({ params }: Pick<PageProps<"/organizer/[orgId]">, "params"
           <span className="text-sm text-muted">{org.nameTh}</span>
           <h1 className="text-3xl font-bold">งานทั้งหมด</h1>
         </div>
-        {canCreate && (
-          <Link href={`/organizer/${orgId}/events/new`} className={`${smallButtonClass} no-underline`}>
-            + สร้างงานใหม่
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/organizer/${orgId}/kyc`} className={smallGhostButtonClass}>
+            ข้อมูลทีมและ KYC
           </Link>
-        )}
+          {canCreate && (
+            <Link href={`/organizer/${orgId}/events/new`} className={`${smallButtonClass} no-underline`}>
+              + สร้างงานใหม่
+            </Link>
+          )}
+        </div>
       </div>
-      {org.status !== "active" && (
-        <p className="rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">
-          ทีมนี้ยังรอตรวจเอกสาร (KYC) สร้างงานและกรอกข้อมูลได้ แต่จะเปิดรับสมัครได้หลังเอกสารผ่าน
-        </p>
-      )}
+      <KycNotice orgId={orgId} />
       {items.length === 0 ? (
         <EmptyState>ยังไม่มีงาน {canCreate && "กด “สร้างงานใหม่” เพื่อเริ่ม"}</EmptyState>
       ) : (
