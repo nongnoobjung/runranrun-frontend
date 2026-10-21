@@ -65,7 +65,9 @@ export function SiteFooter() {
             ผลการแข่งขัน
           </Link>
           <span>วิธีสมัคร</span>
-          <span>นโยบายคืนเงิน</span>
+          <Link href="/refund-policy" className="text-muted no-underline hover:text-ink">
+            นโยบายคืนเงิน
+          </Link>
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">ผู้จัดงาน</b>
@@ -78,8 +80,12 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">ข้อมูล</b>
-          <span>นโยบายความเป็นส่วนตัว (PDPA)</span>
-          <span>เงื่อนไขการใช้งาน</span>
+          <Link href="/privacy" className="text-muted no-underline hover:text-ink">
+            นโยบายความเป็นส่วนตัว (PDPA)
+          </Link>
+          <Link href="/terms" className="text-muted no-underline hover:text-ink">
+            เงื่อนไขการใช้งาน
+          </Link>
         </div>
       </div>
     </footer>

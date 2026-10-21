@@ -61,6 +61,7 @@ async function Accept({ params }: Pick<Props, "params">) {
           questions={questions}
           note={`จาก ${t.sender}${t.shirtSize ? ` · เสื้อไซซ์ ${t.shirtSize} (เปลี่ยนไซซ์ไม่ได้)` : ""}`}
           profiles={profiles.ok ? profiles.data.items : []}
+          organizer={event.organizer.name}
           submitLabel={t.feeSatang > 0 ? `รับสิทธิ์และชำระค่าธรรมเนียม ${baht(t.feeSatang)}` : "รับสิทธิ์"}
         />
       )}

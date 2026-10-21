@@ -40,6 +40,7 @@ test("a runner saves themself once and registers without typing their details ag
   await page.getByLabel(/ชื่อ-นามสกุล/).fill("สมชาย ใจดี");
   await page.getByLabel(/อีเมล \(รับใบเสร็จ\)/).fill(email);
   await page.getByLabel(/^เบอร์โทร/).last().fill("081-234-5678");
+  await page.getByRole("checkbox", { name: /ยินยอมให้ส่งข้อมูลผู้วิ่ง/ }).check();
   await page.getByRole("button", { name: "ไปชำระเงิน" }).click();
   await expect(page).toHaveURL(/\/orders\/.+\/pay/);
 

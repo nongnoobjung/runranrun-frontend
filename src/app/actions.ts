@@ -163,6 +163,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
   });
   const buyer = { name: get("buyer.name"), email: get("buyer.email"), phone: get("buyer.phone") };
   for (const [k, v] of Object.entries(buyer)) if (!v) fieldErrors[`buyer.${k}`] = "จำเป็นต้องกรอก";
+  const consents = consentsOf(formData, fieldErrors);
   if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนไปต่อ", fieldErrors };
 
   // Hold the chosen shirt sizes first; a sold-out size comes back before the order is created.
@@ -177,7 +178,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
     if (!sizes.ok) return { error: problemMessage(sizes.problem) };
   }
 
-  const body = { checkoutSessionId: sessionId, couponCode: get("coupon"), buyer, participants };
+  const body = { checkoutSessionId: sessionId, couponCode: get("coupon"), buyer, participants, consents };
   // Same form data → same key, so a double submit or a retry after a network error cannot create two orders.
   const key = createHash("sha256").update(JSON.stringify(body)).digest("hex").slice(0, 40);
   const res = await api<Order>("/v1/orders", { method: "POST", auth: true, body, idempotencyKey: `order-${key}` });
@@ -322,10 +323,11 @@ export async function declineTransfer(transferId: string): Promise<void> {
 export async function acceptTransfer(transferId: string, _prev: FormState, formData: FormData): Promise<FormState> {
   const fieldErrors: Record<string, string> = {};
   const runner = runnerOf(formData, 0, fieldErrors);
+  const consents = consentsOf(formData, fieldErrors);
   if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนรับสิทธิ์", fieldErrors };
   const res = await api<{ status: "completed"; registrationId: string } | { status: "pending_payment"; orderId: string }>(
     `/v1/me/transfers/${encodeURIComponent(transferId)}/accept`,
-    { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0), ...profileChoiceOf(formData, 0) } },
+    { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0), consents, ...profileChoiceOf(formData, 0) } },
   );
   if (!res.ok) return { error: problemMessage(res.problem), fieldErrors: toFieldErrors(res.problem.errors) };
   if (res.data.status === "pending_payment") redirect(`/orders/${res.data.orderId}/pay`);
@@ -384,4 +386,29 @@ export async function saveProfile(profileId: string | null, _prev: FormState, fo
 export async function deleteProfile(profileId: string): Promise<void> {
   await api(`/v1/me/profiles/${encodeURIComponent(profileId)}`, { method: "DELETE", auth: true });
   redirect("/me/profiles");
+}
+
+/** The consents ticked on a registration form; the required one must be ticked before anything is sent. */
+function consentsOf(formData: FormData, fieldErrors: Record<string, string>) {
+  if (formData.get("consent") !== "1") fieldErrors.consent = "ติ๊กยอมรับก่อนสมัคร";
+  return { terms: true, privacy: true, shareWithOrganizer: true, marketing: formData.get("marketing") === "1" };
+}
+
+// ---------------------------------------------------------------- privacy (PDPA)
+
+export async function setMarketingConsent(granted: boolean): Promise<void> {
+  await api("/v1/me/consents", { method: "POST", auth: true, body: { purpose: "marketing", granted } });
+  redirect("/me/privacy");
+}
+
+/** Closes the account, signs out and goes home. */
+export async function closeAccount(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (formData.get("confirm") !== "1") return { error: "ติ๊กยืนยันก่อนปิดบัญชี" };
+  const res = await api("/v1/me", { method: "DELETE", auth: true, body: { confirm: true } });
+  if (!res.ok) {
+    if (res.status === 401) redirect("/login?next=/me/privacy");
+    return { error: problemMessage(res.problem) };
+  }
+  await clearToken();
+  redirect("/?closed=1");
 }

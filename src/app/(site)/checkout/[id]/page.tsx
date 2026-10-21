@@ -66,6 +66,7 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
       <CheckoutForm
         sessionId={session.id}
         eventName={event.name.th}
+        organizer={event.organizer.name}
         expiresAt={session.expiresAt}
         slots={slots}
         sizes={sizes}
