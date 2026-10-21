@@ -40,6 +40,8 @@ export interface RaceDetail {
   priceSatang: number | null;
   tierName: string | null;
   availability: Availability;
+  /** An image of the course, when the organiser has added one. */
+  routeMapUrl: string | null;
 }
 
 export interface ProductDetail {
@@ -52,18 +54,27 @@ export interface ProductDetail {
   variants: { id: string; label: string; attributes: { chest_in?: number }; priceDeltaSatang: number; available: number | null }[];
 }
 
+/** A text the organiser writes in Thai and optionally English; show it with pick() from lib/content. */
+export interface Localized<Th extends string | null = string | null> {
+  th: Th;
+  en: string | null;
+}
+
 export interface EventDetail {
   id: string;
   slug: string;
   name: { th: string; en: string | null };
-  summary: string | null;
-  description: string | null;
+  summary: Localized;
+  /** Markdown as the organiser wrote it; render with <Markdown>, never as HTML. */
+  description: Localized;
+  rules: Localized;
   type: EventType;
   eventDate: string;
   province: string | null;
   venue: string | null;
   coverImageUrl: string | null;
-  faq: { q: string; a: string }[];
+  gallery: { id: string; url: string; width: number; height: number; caption: Localized }[];
+  faq: { q: Localized<string>; a: Localized<string> }[];
   registration: { opensAt: string | null; closesAt: string | null; holdMinutes: number };
   /** Set once the organiser has published race results. */
   resultsPublishedAt: string | null;

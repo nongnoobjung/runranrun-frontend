@@ -33,3 +33,27 @@ export async function proxyFile(req: Request, apiPath: string, back: string): Pr
     },
   });
 }
+
+/**
+ * Streams a public file (an event image) from the API's /v1/media. No token goes with it; the API marks these files
+ * immutable, so browsers and any CDN in front of the web keep them and the API sees each image about once.
+ */
+export async function proxyPublicFile(apiPath: string): Promise<NextResponse> {
+  const apiUrl = process.env.API_URL?.replace(/\/$/, "");
+  if (!apiUrl) return plain("API_URL is not set", 500);
+  let res: Response;
+  try {
+    res = await fetch(`${apiUrl}${apiPath}`, { cache: "no-store" });
+  } catch {
+    return plain("ระบบไม่ตอบสนอง ลองใหม่อีกครั้ง", 503);
+  }
+  if (!res.ok) return plain(res.status === 404 ? "ไม่พบรูป" : "เปิดรูปไม่สำเร็จ", res.status === 404 ? 404 : 502);
+  return new NextResponse(res.body, {
+    status: 200,
+    headers: {
+      "content-type": res.headers.get("content-type") ?? "application/octet-stream",
+      "cache-control": res.headers.get("cache-control") ?? "public, max-age=3600",
+      "x-content-type-options": "nosniff",
+    },
+  });
+}
