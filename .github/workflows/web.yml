@@ -44,13 +44,21 @@ jobs:
       ENABLE_DEV_ENDPOINTS: "true"
       PAYMENT_GATEWAY: fake
       API_URL: http://localhost:4000
+    # Web and API sit side by side: an api/ folder inside the web checkout would be type-checked by `next build`.
+    defaults:
+      run:
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: web
       - uses: actions/checkout@v4
         with:
           repository: nongnoobjung/runranrun-api
           path: api
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -66,4 +74,4 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
       - if: failure()
-        run: cat api/api.log
+        run: cat ../api/api.log
