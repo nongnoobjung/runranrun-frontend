@@ -27,6 +27,22 @@ export const fmt = {
   time: (v: string) => thaiTime.format(new Date(v)),
 };
 
+/** 6728000 → "1:52:08"; under an hour "52:08". */
+export function duration(ms: number | null): string {
+  if (!ms) return "–";
+  const total = Math.round(ms / 1000);
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = String(total % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
+}
+
+/** 313 → "5:13 /กม." */
+export function pace(secPerKm: number | null): string {
+  if (!secPerKm) return "–";
+  return `${Math.floor(secPerKm / 60)}:${String(secPerKm % 60).padStart(2, "0")} /กม.`;
+}
+
 export function distanceLabel(km: number): string {
   return `${km}K`;
 }
@@ -72,6 +88,8 @@ const PROBLEM_TH: Record<string, string> = {
   REGISTRATION_NOT_FOUND: "ไม่พบผู้สมัครในงานนี้",
   ALREADY_PICKED_UP: "ผู้สมัครคนนี้รับของไปแล้ว",
   NOT_CONFIRMED: "ผู้สมัครคนนี้ยังไม่ได้ชำระเงิน หรือสิทธิ์ถูกยกเลิกแล้ว",
+  NO_RESULTS: "ยังไม่มีผลให้เผยแพร่ นำเข้าไฟล์ผลก่อน",
+  RESULTS_NOT_PUBLISHED: "ผลการแข่งขันยังไม่ออก",
   BIB_TAKEN: "เลขบิบนี้มีผู้สมัครคนอื่นใช้แล้ว",
   REFUND_NOT_ALLOWED: "งานนี้ไม่มีนโยบายคืนเงิน",
   REFUND_CLOSED: "เลยกำหนดขอคืนเงินของงานนี้แล้ว",

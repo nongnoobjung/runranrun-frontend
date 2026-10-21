@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baht, countdown, fmt, problemMessage, provinceName } from "../format";
+import { baht, countdown, duration, fmt, pace, problemMessage, provinceName } from "../format";
 
 describe("format", () => {
   it("shows baht from satang, with satang only when needed", () => {
@@ -23,5 +23,15 @@ describe("format", () => {
     expect(problemMessage({ code: "SOMETHING_NEW", title: "t", detail: "d" })).toBe("d");
     expect(provinceName("BKK")).toBe("กรุงเทพฯ");
     expect(provinceName("XYZ")).toBe("XYZ");
+  });
+});
+
+describe("duration and pace", () => {
+  it("formats race times and pace", () => {
+    expect(duration(6_728_000)).toBe("1:52:08");
+    expect(duration(3_128_400)).toBe("52:08");
+    expect(duration(null)).toBe("–");
+    expect(pace(313)).toBe("5:13 /กม.");
+    expect(pace(null)).toBe("–");
   });
 });

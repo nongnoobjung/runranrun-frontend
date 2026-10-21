@@ -65,6 +65,8 @@ export interface EventDetail {
   coverImageUrl: string | null;
   faq: { q: string; a: string }[];
   registration: { opensAt: string | null; closesAt: string | null; holdMinutes: number };
+  /** Set once the organiser has published race results. */
+  resultsPublishedAt: string | null;
   policy: { allowTransfer: boolean; allowRaceChange: boolean; allowRefund: boolean; waitlist: boolean };
   organizer: { slug: string; name: string; logoUrl: string | null };
   races: RaceDetail[];
@@ -180,4 +182,28 @@ export interface RefundQuote {
   needsBankAccount: boolean;
   allowTransfer: boolean;
   lastRequest: { id: string; status: RefundStatus; amountSatang: number; createdAt: string; note: string | null } | null;
+}
+
+export type ResultStatus = "FIN" | "DNF" | "DNS" | "DQ";
+
+export interface RaceResult {
+  bib: string;
+  name: string;
+  gender: "male" | "female" | "other" | null;
+  ageGroup: string | null;
+  status: ResultStatus;
+  gunTimeMs: number | null;
+  chipTimeMs: number | null;
+  paceSecPerKm: number | null;
+  rankOverall: number | null;
+  rankGender: number | null;
+  rankAgeGroup: number | null;
+}
+
+export interface PublicResults {
+  event: { slug: string; name: string; eventDate: string; publishedAt: string };
+  races: { id: string; code: string; name: string; distanceKm: number; finishers: number; total: number }[];
+  raceId: string | null;
+  items: RaceResult[];
+  total: number;
 }

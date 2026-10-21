@@ -2,7 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { api, type ApiResult } from "./api";
-import type { EventType, FormQuestion, RefundStatus } from "./types";
+import type { EventType, FormQuestion, RaceResult, RefundStatus, ResultStatus } from "./types";
 
 /** Response shapes of the organizer backoffice API (/v1/org). Money is integer satang. */
 
@@ -223,6 +223,28 @@ export interface OrgRefund {
 export interface RefundList {
   items: OrgRefund[];
   counts: { requested: number; approved: number; closed: number };
+}
+
+/** A problem or warning about one line of a results file; `code` is an API code. */
+export interface ResultIssue {
+  line: number;
+  bib: string;
+  code: string;
+}
+
+export interface ResultsSummary {
+  publishedAt: string | null;
+  races: { raceId: string; code: string; distanceKm: number; runners: number; counts: Record<ResultStatus, number>; top: RaceResult[] }[];
+  lastImport: { at: string; rows: number; by: string | null; warnings: ResultIssue[] } | null;
+}
+
+export interface ResultsImport {
+  rows: number;
+  matched: number;
+  errors: ResultIssue[];
+  warnings: ResultIssue[];
+  races: ({ code: string } & Record<ResultStatus, number>)[];
+  applied: boolean;
 }
 
 export interface CheckinRegistration extends OrgRegistration {
