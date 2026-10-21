@@ -37,7 +37,9 @@ export function SiteHeader() {
             หางานวิ่ง
           </Link>
           <span className="text-muted" title="เร็ว ๆ นี้">ผลการแข่งขัน</span>
-          <span className="text-muted" title="เร็ว ๆ นี้">สำหรับผู้จัดงาน</span>
+          <Link href="/organizer" className="text-ink no-underline">
+            สำหรับผู้จัดงาน
+          </Link>
         </nav>
         <Suspense fallback={<div className="h-11 w-28" />}>
           <AccountLinks />

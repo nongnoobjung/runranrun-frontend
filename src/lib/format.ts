@@ -49,6 +49,27 @@ const PROBLEM_TH: Record<string, string> = {
   PAYMENT_GATEWAY_ERROR: "ระบบชำระเงินขัดข้อง ลองใหม่อีกครั้ง",
   API_UNREACHABLE: "ระบบไม่ตอบสนอง ลองใหม่อีกครั้ง",
   UNAUTHORIZED: "กรุณาเข้าสู่ระบบ",
+  FORBIDDEN: "บทบาทของคุณในทีมผู้จัดทำรายการนี้ไม่ได้",
+  VALIDATION_FAILED: "ข้อมูลบางช่องไม่ถูกต้อง",
+  // Organizer backoffice
+  EVENT_NOT_READY: "ยังเปิดรับสมัครไม่ได้ กรอกข้อมูลที่ขาดให้ครบก่อน",
+  INVALID_STATUS: "สถานะงานตอนนี้ทำรายการนี้ไม่ได้",
+  SLUG_TAKEN: "ลิงก์นี้มีงานอื่นใช้แล้ว",
+  SLUG_LOCKED: "เปลี่ยนลิงก์ไม่ได้หลังเปิดรับสมัครแล้ว",
+  RACE_CODE_TAKEN: "งานนี้มีระยะที่ใช้ชื่อย่อนี้แล้ว",
+  CAPACITY_BELOW_SOLD: "ลดโควต้าต่ำกว่าจำนวนที่ขายหรือจองไว้แล้วไม่ได้",
+  BIBS_ISSUED: "ออกบิบจากช่วงนี้ไปแล้ว แก้ได้เฉพาะเลขสุดท้าย",
+  BIB_RANGE_OVERLAP: "ช่วงเลขบิบทับกับระยะอื่น",
+  RACE_HAS_REGISTRATIONS: "ระยะนี้มีผู้สมัครแล้ว ลบไม่ได้",
+  QUOTA_BELOW_SOLD: "ลดโควต้าราคานี้ต่ำกว่าที่ขายไปแล้วไม่ได้",
+  TIER_HAS_SALES: "มีคนซื้อในราคานี้แล้ว ให้ปรับวันสิ้นสุดแทนการลบ",
+  STOCK_BELOW_SOLD: "ลดสต็อกต่ำกว่าจำนวนเสื้อที่ขายหรือจองไว้แล้วไม่ได้",
+  COUPON_CODE_TAKEN: "งานนี้มีโค้ดนี้แล้ว",
+  COUPON_IN_USE: "มีคนใช้โค้ดนี้แล้ว จึงแก้ส่วนลดไม่ได้ ปิดโค้ดแล้วสร้างใหม่แทน",
+  USAGE_BELOW_USED: "จำนวนสิทธิ์ต้องไม่น้อยกว่าที่ใช้ไปแล้ว",
+  REGISTRATION_NOT_FOUND: "ไม่พบผู้สมัครในงานนี้",
+  ALREADY_PICKED_UP: "ผู้สมัครคนนี้รับของไปแล้ว",
+  NOT_CONFIRMED: "ผู้สมัครคนนี้ยังไม่ได้ชำระเงิน หรือสิทธิ์ถูกยกเลิกแล้ว",
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */
@@ -56,7 +77,7 @@ export function problemMessage(p: { code: string; title: string; detail?: string
   return PROBLEM_TH[p.code] ?? p.detail ?? p.title;
 }
 
-const PROVINCES: Record<string, string> = {
+export const PROVINCES: Record<string, string> = {
   BKK: "กรุงเทพฯ", CNX: "เชียงใหม่", HKT: "ภูเก็ต", KKN: "ขอนแก่น", NMA: "นครราชสีมา",
   PKN: "ประจวบคีรีขันธ์", SKA: "สงขลา", CRI: "เชียงราย", CBI: "ชลบุรี", KBI: "กระบี่",
 };
