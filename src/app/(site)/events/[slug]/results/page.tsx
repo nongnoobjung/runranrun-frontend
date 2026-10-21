@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { inputClass } from "@/components/ui";
 import { api } from "@/lib/api";
-import { duration, fmt, pace } from "@/lib/format";
-import type { PublicResults, RaceResult } from "@/lib/types";
+import { duration, fmt, pace, RESULT_STATUS_TH as STATUS_TH } from "@/lib/format";
+import type { PublicResults } from "@/lib/types";
 
 export const metadata: Metadata = { title: "ผลการแข่งขัน" };
 
@@ -14,7 +14,6 @@ type Props = PageProps<"/events/[slug]/results">;
 
 const PAGE_SIZE = 50;
 const GENDER = { male: "ชาย", female: "หญิง" } as const;
-const STATUS_TH: Record<RaceResult["status"], string> = { FIN: "เข้าเส้นชัย", DNF: "ไม่ถึงเส้นชัย", DNS: "ไม่ได้ออกตัว", DQ: "ตัดสิทธิ์" };
 
 export default function ResultsPage({ params, searchParams }: Props) {
   return (

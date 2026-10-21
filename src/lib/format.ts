@@ -1,4 +1,4 @@
-import type { QuestionType } from "./types";
+import type { QuestionType, ResultStatus } from "./types";
 
 /** Formats integer satang as baht: 120000 → "฿1,200", 110160 → "฿1,101.60". */
 export function baht(satang: number): string {
@@ -42,6 +42,8 @@ export function pace(secPerKm: number | null): string {
   if (!secPerKm) return "–";
   return `${Math.floor(secPerKm / 60)}:${String(secPerKm % 60).padStart(2, "0")} /กม.`;
 }
+
+export const RESULT_STATUS_TH: Record<ResultStatus, string> = { FIN: "เข้าเส้นชัย", DNF: "ไม่ถึงเส้นชัย", DNS: "ไม่ได้ออกตัว", DQ: "ตัดสิทธิ์" };
 
 export function distanceLabel(km: number): string {
   return `${km}K`;
