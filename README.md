@@ -73,6 +73,12 @@ pnpm test:e2e                  # Playwright บน desktop และมือถ
 
 `test:e2e` ต้องมี API รันอยู่ที่ `API_URL` (ใช้ `PAYMENT_GATEWAY=fake`, `ENABLE_DEV_ENDPOINTS=true` และ seed ข้อมูลแล้ว)
 
+เว็บที่ทดสอบอยู่ที่ `WEB_URL` (ค่าเริ่มต้น `http://localhost:3000`) ถ้ามีเว็บรันอยู่ที่นั่นแล้ว Playwright จะใช้ตัวนั้น ถ้ายังไม่มีจะ build แล้ว start ที่ port ของ `WEB_URL` ให้เอง ถ้า port 3000 / 4000 ในเครื่องไม่ว่าง ให้ระบุทั้งสองค่า เช่น
+
+```bash
+WEB_URL=http://localhost:3100 API_URL=http://localhost:4100 pnpm test:e2e
+```
+
 ## ยังไม่ได้ทำ
 
 - LINE Login และ OTP (ต้องทำที่ API ก่อน)
