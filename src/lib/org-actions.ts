@@ -42,6 +42,9 @@ const VALIDATION_DETAIL_TH: Record<string, string> = {
   "Give at least two choices": "ใส่ตัวเลือกอย่างน้อย 2 ข้อ (บรรทัดละข้อ)",
   "The minimum must not be above the maximum": "ค่าต่ำสุดต้องไม่มากกว่าค่าสูงสุด",
   "Pick races of this event": "เลือกระยะของงานนี้",
+  "The CSV needs registration_no and bib columns": "ไฟล์ต้องมีคอลัมน์ registration_no และ bib",
+  "The CSV has no rows with a bib number": "ไม่มีแถวไหนกรอกเลขบิบ",
+  "Import at most 20,000 rows at a time": "นำเข้าได้ครั้งละไม่เกิน 20,000 แถว",
 };
 
 export function problemState(p: ApiProblem): OrgFormState {
