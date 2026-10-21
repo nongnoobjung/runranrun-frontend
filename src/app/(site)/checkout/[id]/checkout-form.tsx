@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition, type FormEvent } from "react";
 import { submitCheckout, type FormState } from "@/app/actions";
 import { Countdown } from "@/components/countdown";
 import { Field, Questions } from "@/components/runner-fields";
+import { ConsentFields } from "@/components/consent-fields";
 import { SavedRunnerFields } from "@/components/saved-runner";
 import { buttonClass, ErrorNote } from "@/components/ui";
 import { baht } from "@/lib/format";
@@ -26,6 +27,7 @@ export interface SizeOption {
 export function CheckoutForm({
   sessionId,
   eventName,
+  organizer,
   expiresAt,
   slots,
   sizes,
@@ -34,6 +36,8 @@ export function CheckoutForm({
 }: {
   sessionId: string;
   eventName: string;
+  /** Who runs the event; the runners' details go to them. */
+  organizer: string;
   expiresAt: string;
   slots: Slot[];
   sizes: SizeOption[];
@@ -154,6 +158,8 @@ export function CheckoutForm({
         </div>
         <Field label="โค้ดส่วนลด (ถ้ามี)" name="coupon" placeholder="เช่น RUN10" />
       </section>
+
+      <ConsentFields organizer={organizer} error={err("consent")} />
 
       <ErrorNote message={state.error} />
 
