@@ -125,6 +125,18 @@ const PROBLEM_TH: Record<string, string> = {
   RACE_NOT_ELIGIBLE: "อายุหรือเพศของผู้วิ่งไม่ตรงเงื่อนไขของระยะนี้",
   PROFILE_EXISTS: "บันทึกผู้วิ่งที่ใช้เลขบัตรนี้ไว้แล้ว แก้ไขคนเดิมแทน",
   TOO_MANY_PROFILES: "บันทึกผู้วิ่งได้สูงสุด 20 คน ลบคนที่ไม่ใช้แล้วก่อน",
+  // Organiser sign-up and KYC
+  TOO_MANY_PENDING_TEAMS: "คุณมีทีมที่รอตรวจเอกสารอยู่ 3 ทีมแล้ว ส่งเอกสารให้ครบก่อนเปิดทีมใหม่",
+  KYC_LOCKED: "ชื่อตามทะเบียนและเลขผู้เสียภาษีผ่านการตรวจแล้ว ติดต่อทีมงานก้าวหากต้องแก้",
+  UNSUPPORTED_FILE_TYPE: "รองรับเฉพาะไฟล์ PDF, JPG หรือ PNG",
+  UNSUPPORTED_MEDIA_TYPE: "รองรับเฉพาะไฟล์ PDF, JPG หรือ PNG",
+  FILE_TOO_LARGE: "ไฟล์ใหญ่เกิน 10 MB",
+  FILE_REQUIRED: "เลือกไฟล์ก่อน",
+  EMPTY_FILE: "ไฟล์ว่างเปล่า",
+  TOO_MANY_PARTS: "อัปโหลดได้ครั้งละหนึ่งไฟล์",
+  TOO_MANY_DOCUMENTS: "ทีมหนึ่งเก็บเอกสารได้ 20 ไฟล์ ลบไฟล์เก่าที่ไม่ใช้ก่อน",
+  DOCUMENT_APPROVED: "เอกสารที่ตรวจผ่านแล้วลบไม่ได้",
+  NO_BANK_SUBMISSION: "ผู้จัดยังไม่ได้ส่งบัญชีรับเงินมาให้ยืนยัน",
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */

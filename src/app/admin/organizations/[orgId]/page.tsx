@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Card, dangerButtonClass, PageHeader, Pill, smallGhostButtonClass } from "@/components/backoffice";
-import { approveOrg, reactivateOrg, setBankAccount, setReviewEvents, suspendOrg } from "@/app/admin/actions";
+import { approveDocument, approveOrg, reactivateOrg, rejectDocument, setBankAccount, setReviewEvents, suspendOrg, verifyBankAccount } from "@/app/admin/actions";
 import { adminGet, adminMe, ORG_STATUS, type AdminOrg } from "@/lib/admin";
 import { fmt } from "@/lib/format";
-import { EVENT_STATUS, type EventStatus } from "@/lib/org";
+import { EVENT_STATUS, fileSize, KYC_DOC_STATUS, KYC_DOC_TYPE, type EventStatus } from "@/lib/org";
 import { BANKS } from "@/lib/types";
 import { ActionButton, TextActionForm } from "../../action-button";
 import { BankForm } from "./bank-form";
@@ -15,14 +15,6 @@ export const metadata: Metadata = { title: "ผู้จัดงาน" };
 type Props = PageProps<"/admin/organizations/[orgId]">;
 
 const at = new Intl.DateTimeFormat("th-TH-u-ca-gregory", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
-
-const DOC_TYPE: Record<string, string> = {
-  company_certificate: "หนังสือรับรองบริษัท",
-  vat_registration: "ภ.พ.20",
-  id_card: "บัตรประชาชนผู้มีอำนาจ",
-  bank_book: "หน้าสมุดบัญชี",
-  other: "อื่น ๆ",
-};
 
 const ROLE: Record<string, string> = { owner: "เจ้าของ", admin: "แอดมิน", finance: "การเงิน", staff: "หน้างาน", viewer: "ดูอย่างเดียว" };
 
@@ -41,7 +33,8 @@ async function Organization({ params }: Pick<Props, "params">) {
   const status = ORG_STATUS[o.status];
   const info: [string, React.ReactNode][] = [
     ["ชื่อนิติบุคคล", o.legalName ?? "–"],
-    ["เลขผู้เสียภาษี", o.taxId ?? "–"],
+    ["เลขผู้เสียภาษี", o.taxId ? `${o.taxId}${o.isVatRegistered ? " · จด VAT" : ""}` : "–"],
+    ["ที่อยู่", o.address ? [o.address.line1, o.address.subdistrict, o.address.district, o.address.province, o.address.postcode].filter(Boolean).join(" ") : "–"],
     ["อีเมล", o.contactEmail ?? "–"],
     ["โทร", o.contactPhone ?? "–"],
     ["เว็บไซต์", o.websiteUrl ?? "–"],
@@ -58,7 +51,7 @@ async function Organization({ params }: Pick<Props, "params">) {
       {o.statusNote && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">เหตุผลที่ระงับ: {o.statusNote}</p>}
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="flex flex-col gap-4">
+        <div className="flex min-w-0 flex-col gap-4">
           <Card title="ข้อมูลผู้จัด">
             <dl className="grid grid-cols-[110px_minmax(0,1fr)] gap-x-3 gap-y-2 text-sm">
               {info.map(([k, v]) => (
@@ -72,17 +65,43 @@ async function Organization({ params }: Pick<Props, "params">) {
 
           <Card title="เอกสาร KYC">
             {o.documents.length === 0 ? (
-              <p className="text-sm text-muted">ยังไม่มีเอกสารแนบในระบบ ขอเอกสารทางอีเมลแล้วตรวจก่อนอนุมัติ</p>
+              <p className="text-sm text-muted">ผู้จัดยังไม่ได้ส่งเอกสาร</p>
             ) : (
-              <ul className="flex flex-col gap-2 text-sm">
-                {o.documents.map((d) => (
-                  <li key={d.id} className="flex flex-wrap items-center gap-2">
-                    <a href={d.fileUrl} target="_blank" rel="noreferrer">
-                      {DOC_TYPE[d.type] ?? d.type}
-                    </a>
-                    <span className="text-muted">{d.status === "approved" ? "ตรวจแล้ว" : d.status === "rejected" ? `ไม่ผ่าน: ${d.rejectReason ?? ""}` : "รอตรวจ"}</span>
-                  </li>
-                ))}
+              <ul aria-label="เอกสาร KYC" className="flex flex-col divide-y divide-line">
+                {o.documents.map((d) => {
+                  const s = KYC_DOC_STATUS[d.status];
+                  return (
+                    <li key={d.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <span className="flex min-w-0 flex-1 basis-56 flex-col text-sm leading-snug">
+                          <a href={`/admin/organizations/${o.id}/documents/${d.id}`} target="_blank" rel="noreferrer" className="font-semibold">
+                            {KYC_DOC_TYPE[d.type]}
+                          </a>
+                          <span className="truncate text-[13px] text-muted">
+                            {d.fileName} · {fileSize(d.sizeBytes)} · {at.format(new Date(d.createdAt))}
+                          </span>
+                          {d.status === "rejected" && d.rejectReason && <span className="text-[13px] text-bad">เหตุผล: {d.rejectReason}</span>}
+                        </span>
+                        <Pill label={s.label} className={s.className} />
+                      </div>
+                      {manage && (
+                        <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
+                          {d.status !== "approved" && <ActionButton action={approveDocument.bind(null, o.id, d.id)} label="เอกสารผ่าน" pendingLabel="…" className={smallGhostButtonClass} />}
+                          {d.status !== "rejected" && (
+                            <TextActionForm
+                              action={rejectDocument.bind(null, o.id, d.id)}
+                              name="reason"
+                              label="ไม่ผ่าน เพราะ (ผู้จัดเห็นข้อความนี้)"
+                              placeholder="เช่น ภาพไม่ชัด"
+                              submitLabel="ส่งกลับให้แก้"
+                              className={dangerButtonClass}
+                            />
+                          )}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>
@@ -94,7 +113,32 @@ async function Organization({ params }: Pick<Props, "params">) {
                 {o.bankAccount.branch && ` · สาขา${o.bankAccount.branch}`} · {o.bankAccount.verified ? <span className="text-ok">ตรวจแล้ว</span> : "ยังไม่ตรวจ"}
               </p>
             ) : (
-              <p className="text-sm text-muted">ยังไม่มีบัญชีรับเงิน จ่ายเงินผู้จัดไม่ได้จนกว่าจะบันทึก</p>
+              <p className="text-sm text-muted">ยังไม่มีบัญชีที่ตรวจแล้ว จ่ายเงินผู้จัดไม่ได้จนกว่าจะบันทึก</p>
+            )}
+            {o.submittedBankAccount && (
+              <div className="flex flex-col gap-3 rounded-2xl bg-warn-soft p-4 text-sm">
+                <b>ผู้จัดส่งบัญชีมาให้ตรวจ ({at.format(new Date(o.submittedBankAccount.submittedAt))})</b>
+                <dl className="grid grid-cols-[90px_minmax(0,1fr)] gap-x-3 gap-y-1">
+                  <dt className="text-muted">ธนาคาร</dt>
+                  <dd>{BANKS[o.submittedBankAccount.bankCode as keyof typeof BANKS] ?? o.submittedBankAccount.bankCode}</dd>
+                  <dt className="text-muted">เลขบัญชี</dt>
+                  <dd className="tabular-nums">{o.submittedBankAccount.accountNumber ?? `••••${o.submittedBankAccount.accountLast4}`}</dd>
+                  <dt className="text-muted">ชื่อบัญชี</dt>
+                  <dd className="break-words">{o.submittedBankAccount.accountName}</dd>
+                  {o.submittedBankAccount.branch && (
+                    <>
+                      <dt className="text-muted">สาขา</dt>
+                      <dd>{o.submittedBankAccount.branch}</dd>
+                    </>
+                  )}
+                </dl>
+                {manage && (
+                  <>
+                    <span className="text-muted">เทียบกับหน้าสมุดบัญชีในเอกสาร KYC ก่อนยืนยัน</span>
+                    <ActionButton action={verifyBankAccount.bind(null, o.id)} label="ยืนยันบัญชีนี้" pendingLabel="กำลังยืนยัน…" />
+                  </>
+                )}
+              </div>
             )}
             {manage && <BankForm action={setBankAccount.bind(null, o.id)} banks={Object.entries(BANKS)} />}
           </Card>

@@ -55,6 +55,20 @@ export async function setBankAccount(orgId: string, _prev: OrgFormState, fd: For
   return (await adminMutation(`/organizations/${orgId}/bank-account`, "PUT", body)) ?? { notice: "บันทึกบัญชีรับเงินแล้ว" };
 }
 
+export async function verifyBankAccount(orgId: string): Promise<OrgFormState> {
+  return (await adminMutation(`/organizations/${orgId}/bank-account/verify`, "POST")) ?? { notice: "ยืนยันบัญชีแล้ว เงินจากงานโอนเข้าบัญชีนี้" };
+}
+
+export async function approveDocument(orgId: string, docId: string): Promise<OrgFormState> {
+  return (await adminMutation(`/organizations/${orgId}/documents/${docId}/approve`, "POST")) ?? { notice: "เอกสารผ่านแล้ว" };
+}
+
+export async function rejectDocument(orgId: string, docId: string, _prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
+  const reason = text(fd, "reason");
+  if (!reason) return { fieldErrors: { reason: "บอกผู้จัดว่าเอกสารไม่ผ่านเพราะอะไร" } };
+  return (await adminMutation(`/organizations/${orgId}/documents/${docId}/reject`, "POST", { reason })) ?? { notice: "ส่งเอกสารกลับให้ผู้จัดแล้ว" };
+}
+
 export async function createSettlement(eventId: string): Promise<OrgFormState> {
   return (await adminMutation(`/events/${eventId}/settlements`, "POST")) ?? { notice: "สร้างรอบจ่ายแล้ว" };
 }

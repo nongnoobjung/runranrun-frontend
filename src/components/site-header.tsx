@@ -68,6 +68,15 @@ export function SiteFooter() {
           <span>นโยบายคืนเงิน</span>
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
+          <b className="text-ink">ผู้จัดงาน</b>
+          <Link href="/organizer/new" className="text-muted no-underline hover:text-ink">
+            เปิดทีมผู้จัดงาน
+          </Link>
+          <Link href="/organizer" className="text-muted no-underline hover:text-ink">
+            เข้าระบบผู้จัด
+          </Link>
+        </div>
+        <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">ข้อมูล</b>
           <span>นโยบายความเป็นส่วนตัว (PDPA)</span>
           <span>เงื่อนไขการใช้งาน</span>

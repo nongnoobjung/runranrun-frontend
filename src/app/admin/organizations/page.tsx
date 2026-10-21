@@ -67,7 +67,7 @@ async function Organizations({ searchParams }: Pick<Props, "searchParams">) {
                     {o.pendingDocs > 0 && ` · เอกสารรอตรวจ ${o.pendingDocs}`}
                   </span>
                   <span className="text-xs text-muted">
-                    {o.bankVerified ? "บัญชีรับเงินตรวจแล้ว" : "ยังไม่มีบัญชีรับเงิน"} · {o.reviewEvents ? "งานต้องรอตรวจ" : "เปิดงานเองได้"}
+                    {o.bankVerified ? "บัญชีรับเงินตรวจแล้ว" : o.bankSubmitted ? "บัญชีรับเงินรอยืนยัน" : "ยังไม่มีบัญชีรับเงิน"} · {o.reviewEvents ? "งานต้องรอตรวจ" : "เปิดงานเองได้"}
                   </span>
                 </span>
                 <Pill label={ORG_STATUS[o.status].label} className={ORG_STATUS[o.status].className} />
