@@ -148,3 +148,19 @@ export interface MyRegistration {
   event: { slug: string; name: string; eventDate: string; venue: string | null; coverImageUrl: string | null };
   orderNo: string;
 }
+
+/** Thai bank codes, for refund and payout accounts. */
+export const BANKS: Record<string, string> = {
+  KBANK: "ธนาคารกสิกรไทย",
+  SCB: "ธนาคารไทยพาณิชย์",
+  BBL: "ธนาคารกรุงเทพ",
+  KTB: "ธนาคารกรุงไทย",
+  BAY: "ธนาคารกรุงศรีอยุธยา",
+  TTB: "ธนาคารทหารไทยธนชาต",
+  GSB: "ธนาคารออมสิน",
+  KKP: "ธนาคารเกียรตินาคินภัทร",
+  CIMBT: "ธนาคารซีไอเอ็มบี ไทย",
+  UOBT: "ธนาคารยูโอบี",
+  LHBANK: "ธนาคารแลนด์ แอนด์ เฮ้าส์",
+  BAAC: "ธ.ก.ส.",
+};

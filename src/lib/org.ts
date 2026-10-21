@@ -200,6 +200,83 @@ export function bibLabel(prefix: string | null, n: number): string {
   return `${prefix ?? ""}${String(n).padStart(4, "0")}`;
 }
 
+/** Money for one event (or summed for the organisation). All satang; net = sales − discounts − platformFees − refunds. */
+export interface FinanceSummary {
+  orders: number;
+  runners: number;
+  salesSatang: number;
+  discountsSatang: number;
+  /** Paid by runners on top of the price; goes to the platform, not part of net. */
+  runnerFeesSatang: number;
+  platformFeesSatang: number;
+  collectedSatang: number;
+  refundCount: number;
+  refundsSatang: number;
+  refundsPaidSatang: number;
+  pendingOrders: number;
+  pendingSatang: number;
+  netSatang: number;
+  paidOutSatang: number;
+  toPayOutSatang: number;
+}
+
+export interface SettlementRound {
+  id: string;
+  event: { id: string; nameTh: string } | null;
+  periodStart: string;
+  periodEnd: string;
+  status: "open" | "calculated" | "approved" | "paid";
+  orders: number;
+  grossSatang: number;
+  refundsSatang: number;
+  feesSatang: number;
+  withholdingTaxSatang: number;
+  adjustmentsSatang: number;
+  netSatang: number;
+  payout: { status: "pending" | "processing" | "paid" | "failed"; amountSatang: number; transferRef: string | null; paidAt: string | null; bankCode: string | null; accountLast4: string | null } | null;
+}
+
+export interface PayoutAccount {
+  bankCode: string;
+  accountName: string;
+  accountLast4: string;
+  branch: string | null;
+  verified: boolean;
+}
+
+export interface EventFinance {
+  summary: FinanceSummary;
+  payouts: SettlementRound[];
+  bankAccount: PayoutAccount | null;
+}
+
+export interface OrgFinance {
+  totals: FinanceSummary;
+  events: (FinanceSummary & { eventId: string; nameTh: string; eventDate: string })[];
+  payouts: SettlementRound[];
+  bankAccount: PayoutAccount | null;
+}
+
+export type TransactionStatus = "pending_payment" | "paid" | "partially_refunded" | "refunded" | "cancelled";
+
+export interface FinanceTransaction {
+  orderNo: string;
+  status: TransactionStatus;
+  createdAt: string;
+  paidAt: string | null;
+  method: string | null;
+  buyerName: string | null;
+  runners: number;
+  salesSatang: number;
+  discountSatang: number;
+  runnerFeeSatang: number;
+  totalSatang: number;
+  platformFeeSatang: number;
+  refundedSatang: number;
+  /** What the order adds to the payout; null until it is paid. */
+  netSatang: number | null;
+}
+
 export interface CheckinRegistration extends OrgRegistration {
   emergencyName: string | null;
 }
@@ -225,6 +302,7 @@ const PERMISSIONS = {
   view_pii: ["owner", "admin"],
   checkin: ["owner", "admin", "staff"],
   manage_team: ["owner"],
+  view_finance: ["owner", "admin", "finance"],
 } as const satisfies Record<string, readonly OrgRole[]>;
 
 export type OrgPermission = keyof typeof PERMISSIONS;
