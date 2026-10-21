@@ -131,3 +131,9 @@ export async function adminGet<T>(path: string, next = "/admin"): Promise<T> {
 
 /** The caller's platform role (deduplicated per request). */
 export const adminMe = cache(() => adminGet<AdminMe>("/me"));
+
+/** The caller's platform role, or null when they are signed out or not platform staff. */
+export const adminMeOrNull = cache(async () => {
+  const res = await api<AdminMe>("/v1/admin/me", { auth: true });
+  return res.ok ? res.data : null;
+});

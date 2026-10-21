@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { logout } from "@/app/actions";
 import { Logo } from "@/components/ui";
-import { adminMe } from "@/lib/admin";
+import { adminMeOrNull } from "@/lib/admin";
 import { AdminNav } from "./admin-nav";
 
 export const metadata: Metadata = { title: { default: "แอดมิน", template: "%s · แอดมิน · ก้าว" }, robots: { index: false } };
@@ -42,7 +42,10 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
 }
 
 async function Nav() {
-  const me = await adminMe();
+  // People who are not platform staff get the 404 from the page itself: a notFound() thrown here,
+  // in a root layout, would skip admin/not-found.tsx.
+  const me = await adminMeOrNull();
+  if (!me) return null;
   return (
     <AdminNav
       items={[
