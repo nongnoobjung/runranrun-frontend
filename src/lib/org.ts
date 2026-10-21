@@ -95,6 +95,13 @@ export interface OrgEvent {
   /** Share paid back, in basis points (8000 = 80%). */
   refundPercentBps: number;
   waitlistEnabled: boolean;
+  allowTransfer: boolean;
+  /** Paid by whoever takes the place over. */
+  transferFeeSatang: number;
+  transferDeadline: string | null;
+  allowRaceChange: boolean;
+  raceChangeFeeSatang: number;
+  raceChangeDeadline: string | null;
   publishedAt: string | null;
   races: OrgRace[];
   shirt: { productId: string; nameTh: string; sizes: ShirtSize[] } | null;
@@ -162,7 +169,11 @@ export interface RegistrationDetail extends OrgRegistration {
   answers: { key: string; label: string; type: FormQuestion["type"]; value: unknown }[];
   pricePaidSatang: number;
   order: { orderNo: string; status: string; totalSatang: number; paidAt: string | null; buyerName: string | null; buyerEmail: string | null } | null;
-  timeline: { at: string; kind: "registered" | "paid" | "kit_pickup" | "checkin_voided"; detail: string | null }[];
+  timeline: {
+    at: string;
+    kind: "registered" | "paid" | "kit_pickup" | "checkin_voided" | "race_change" | "transferred_in" | "transferred_out";
+    detail: string | null;
+  }[];
 }
 
 /** A question as the form builder sees it; `answered` counts registrations that hold an answer. */
@@ -457,4 +468,37 @@ export async function orgGet<T>(orgId: string, path: string, next = "/organizer"
 
 export function eventPath(orgId: string, eventId: string, section = ""): string {
   return `/organizer/${orgId}/events/${eventId}${section ? `/${section}` : ""}`;
+}
+
+/** Transfers and race changes in one event, newest first. */
+export interface EventChanges {
+  transfers: {
+    id: string;
+    status: "pending" | "accepted" | "completed" | "rejected" | "expired" | "cancelled";
+    raceCode: string;
+    bibNumber: string | null;
+    from: { registrationId: string; registrationNo: string; name: string };
+    to: { email: string; registrationId: string | null; registrationNo: string | null; name: string | null };
+    feeSatang: number;
+    expiresAt: string;
+    createdAt: string;
+    completedAt: string | null;
+  }[];
+  raceChanges: {
+    id: string;
+    status: "pending_payment" | "completed" | "rejected" | "cancelled";
+    registrationId: string;
+    registrationNo: string;
+    name: string;
+    bibNumber: string | null;
+    fromRaceCode: string;
+    toRaceCode: string;
+    priceDiffSatang: number;
+    feeSatang: number;
+    paidSatang: number;
+    byOrganizer: boolean;
+    requestedBy: string | null;
+    createdAt: string;
+    completedAt: string | null;
+  }[];
 }

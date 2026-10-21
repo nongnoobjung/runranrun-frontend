@@ -29,7 +29,14 @@ async function Pay({ params }: Pick<PageProps<"/orders/[id]/pay">, "params">) {
     <div className="flex flex-col gap-4">
       <div className="rounded-[20px] bg-white px-4 py-3">
         <div className="font-semibold">ชำระเงิน · {order.event.name}</div>
-        <div className="text-[13px] text-muted">ขั้น 3 จาก 3 · คำสั่งซื้อ {order.orderNo}</div>
+        <div className="text-[13px] text-muted">
+          {order.purpose.kind === "race_change"
+            ? `เปลี่ยนเป็น ${order.purpose.raceCode}`
+            : order.purpose.kind === "transfer"
+              ? `รับโอนสิทธิ์ ${order.purpose.raceCode}`
+              : "ขั้น 3 จาก 3"}{" "}
+          · คำสั่งซื้อ {order.orderNo}
+        </div>
       </div>
 
       <section className="flex flex-col gap-1.5 rounded-card bg-white px-5 py-4 tabular-nums">

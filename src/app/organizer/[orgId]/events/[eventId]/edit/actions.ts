@@ -1,6 +1,6 @@
 "use server";
 
-import { bangkokToIso, num, text } from "@/lib/form";
+import { bangkokToIso, num, satang, text } from "@/lib/form";
 import { orgMutation, type OrgFormState } from "@/lib/org-actions";
 
 export async function updateEvent(orgId: string, eventId: string, _prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
@@ -21,6 +21,12 @@ export async function updateEvent(orgId: string, eventId: string, _prev: OrgForm
     allowRefund: fd.get("allowRefund") === "on",
     waitlistEnabled: fd.get("waitlistEnabled") === "on",
     refundDeadline: bangkokToIso(text(fd, "refundDeadline")),
+    allowTransfer: fd.get("allowTransfer") === "on",
+    transferFeeSatang: satang(fd, "transferFee") ?? 0,
+    transferDeadline: bangkokToIso(text(fd, "transferDeadline")),
+    allowRaceChange: fd.get("allowRaceChange") === "on",
+    raceChangeFeeSatang: satang(fd, "raceChangeFee") ?? 0,
+    raceChangeDeadline: bangkokToIso(text(fd, "raceChangeDeadline")),
   };
   // Typed as a percentage, sent as basis points.
   const pct = num(fd, "refundPercent");

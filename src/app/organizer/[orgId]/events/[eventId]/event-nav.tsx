@@ -10,7 +10,7 @@ export interface NavItem {
 }
 
 /** Sidebar menu; a horizontal strip on phones. The current section is highlighted. */
-export function EventNav({ items, soon }: { items: NavItem[]; soon: string[] }) {
+export function EventNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
   const navRef = useRef<HTMLElement>(null);
   // The overview's href is the event root, which prefixes every other section.
@@ -46,16 +46,6 @@ export function EventNav({ items, soon }: { items: NavItem[]; soon: string[] }) 
           );
         })}
       </ul>
-      {soon.length > 0 && (
-        <div className="mt-4 hidden flex-col gap-1 border-t border-line pt-4 md:flex">
-          <span className="px-3.5 text-xs text-muted">เร็ว ๆ นี้</span>
-          {soon.map((label) => (
-            <span key={label} className="px-3.5 py-1.5 text-sm text-muted/70">
-              {label}
-            </span>
-          ))}
-        </div>
-      )}
     </nav>
   );
 }

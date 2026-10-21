@@ -3,7 +3,8 @@
 import { useActionState, useState, useTransition, type FormEvent } from "react";
 import { submitCheckout, type FormState } from "@/app/actions";
 import { Countdown } from "@/components/countdown";
-import { buttonClass, ErrorNote, inputClass } from "@/components/ui";
+import { Field, Questions, RunnerFields } from "@/components/runner-fields";
+import { buttonClass, ErrorNote } from "@/components/ui";
 import { baht } from "@/lib/format";
 import type { FormQuestion } from "@/lib/types";
 
@@ -105,33 +106,7 @@ export function CheckoutForm({
                 นี่คือฉัน
               </label>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="ชื่อ (ไทย)" name={`p${i}.firstNameTh`} error={err(`p${i}.firstNameTh`)} autoComplete="given-name" />
-              <Field label="นามสกุล (ไทย)" name={`p${i}.lastNameTh`} error={err(`p${i}.lastNameTh`)} autoComplete="family-name" />
-              <Field label="First name (อังกฤษ, บนบิบ)" name={`p${i}.firstNameEn`} error={err(`p${i}.firstNameEn`)} required />
-              <Field label="Last name (อังกฤษ)" name={`p${i}.lastNameEn`} error={err(`p${i}.lastNameEn`)} required />
-              <label className="flex flex-col gap-1">
-                <span className="text-[13px] text-muted">เพศ</span>
-                <select name={`p${i}.gender`} defaultValue="male" className={inputClass}>
-                  <option value="male">ชาย</option>
-                  <option value="female">หญิง</option>
-                  <option value="other">ไม่ระบุ</option>
-                </select>
-              </label>
-              <Field label="วันเกิด" name={`p${i}.birthDate`} type="date" error={err(`p${i}.birthDate`)} required />
-              <label className="flex flex-col gap-1">
-                <span className="text-[13px] text-muted">ประเภทเอกสาร</span>
-                <select name={`p${i}.idDocType`} defaultValue="thai_id" className={inputClass}>
-                  <option value="thai_id">บัตรประชาชน</option>
-                  <option value="passport">พาสปอร์ต</option>
-                </select>
-              </label>
-              <Field label="เลขบัตร / พาสปอร์ต" name={`p${i}.idDocNumber`} error={err(`p${i}.idDocNumber`)} required inputMode="numeric" />
-              <Field label="เบอร์โทร" name={`p${i}.phone`} type="tel" error={err(`p${i}.phone`)} autoComplete="tel" />
-              <Field label="สัญชาติ (รหัส 2 ตัว)" name={`p${i}.nationality`} defaultValue="TH" maxLength={2} error={err(`p${i}.nationality`)} />
-              <Field label="ผู้ติดต่อฉุกเฉิน" name={`p${i}.emergencyName`} error={err(`p${i}.emergencyName`)} required />
-              <Field label="เบอร์ผู้ติดต่อฉุกเฉิน" name={`p${i}.emergencyPhone`} type="tel" error={err(`p${i}.emergencyPhone`)} required />
-            </div>
+            <RunnerFields prefix={`p${i}`} err={err} />
           </div>
 
           {sizes.length > 0 && (
@@ -188,111 +163,5 @@ export function CheckoutForm({
         </button>
       </div>
     </form>
-  );
-}
-
-/**
- * The organiser's questions for one runner. Field names say how the action reads them:
- * p0.q.<key> one value, p0.qm.<key> several ticked choices, p0.qc.<key> a single tick.
- */
-function Questions({ index, questions, err }: { index: number; questions: FormQuestion[]; err: (name: string) => string | undefined }) {
-  if (questions.length === 0) return null;
-  return (
-    <fieldset className="flex flex-col gap-4 rounded-card bg-white p-5">
-      <legend className="sr-only">คำถามจากผู้จัด ผู้วิ่ง {index + 1}</legend>
-      <h3 className="text-lg font-semibold">คำถามจากผู้จัด</h3>
-      {questions.map((q) => {
-        const name = `p${index}.q.${q.key}`;
-        const error = err(name);
-        const label = (
-          <span className="text-[13px] text-muted">
-            {q.label}
-            {q.required && <span className="text-bad"> *</span>}
-          </span>
-        );
-        const help = q.helpText && <span className="text-xs text-muted">{q.helpText}</span>;
-        const problem = error && <span className="text-sm text-bad">{error}</span>;
-        const cls = `${inputClass} ${error ? "border-bad" : ""}`;
-        if (q.type === "checkbox") {
-          return (
-            <div key={q.key} className="flex flex-col gap-1">
-              <label className="flex min-h-11 items-start gap-3 text-[15px]">
-                <input type="checkbox" name={`p${index}.qc.${q.key}`} value="1" aria-invalid={Boolean(error)} className="mt-0.5 h-5 w-5 flex-none accent-brand" />
-                <span>
-                  {q.label}
-                  {q.required && <span className="text-bad"> *</span>}
-                </span>
-              </label>
-              {help}
-              {problem}
-            </div>
-          );
-        }
-        if (q.type === "multiselect") {
-          return (
-            <fieldset key={q.key} className="flex flex-col gap-1.5">
-              <legend className="mb-1.5">{label}</legend>
-              <div className="flex flex-wrap gap-2">
-                {q.options?.map((o) => (
-                  <label key={o} className="cursor-pointer">
-                    <input type="checkbox" name={`p${index}.qm.${q.key}`} value={o} className="peer sr-only" />
-                    <span className="flex min-h-11 items-center rounded-full bg-ice px-4 text-sm peer-checked:bg-brand peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-brand">
-                      {o}
-                    </span>
-                  </label>
-                ))}
-              </div>
-              {help}
-              {problem}
-            </fieldset>
-          );
-        }
-        return (
-          <label key={q.key} className="flex flex-col gap-1">
-            {label}
-            {q.type === "select" ? (
-              <select name={name} defaultValue="" aria-invalid={Boolean(error)} className={cls}>
-                <option value="">เลือก</option>
-                {q.options?.map((o) => (
-                  <option key={o} value={o}>
-                    {o}
-                  </option>
-                ))}
-              </select>
-            ) : q.type === "textarea" ? (
-              <textarea name={name} rows={3} maxLength={2000} aria-invalid={Boolean(error)} className={`${cls} min-h-24 py-2.5`} />
-            ) : (
-              <input
-                name={name}
-                type={q.type === "date" ? "date" : "text"}
-                inputMode={q.type === "number" ? "decimal" : undefined}
-                maxLength={q.type === "text" ? 200 : undefined}
-                aria-invalid={Boolean(error)}
-                className={cls}
-              />
-            )}
-            {help}
-            {problem}
-          </label>
-        );
-      })}
-    </fieldset>
-  );
-}
-
-function Field({
-  label,
-  error,
-  ...input
-}: { label: string; error?: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[13px] text-muted">
-        {label}
-        {input.required && <span className="text-bad"> *</span>}
-      </span>
-      <input {...input} aria-invalid={Boolean(error)} className={`${inputClass} ${error ? "border-bad" : ""}`} />
-      {error && <span className="text-sm text-bad">{error}</span>}
-    </label>
   );
 }

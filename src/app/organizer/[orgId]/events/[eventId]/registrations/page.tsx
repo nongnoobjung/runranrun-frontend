@@ -20,6 +20,7 @@ import {
 } from "@/lib/org";
 import { SetBibForm } from "../bibs/bib-forms";
 import { CancelRegistrationForm } from "../requests/refund-forms";
+import { MoveRaceForm } from "./move-race";
 import { RevealId } from "./reveal-id";
 
 export const metadata: Metadata = { title: "ผู้สมัคร" };
@@ -220,6 +221,11 @@ async function Registrations({ params, searchParams }: Props) {
                 showPii={showPii}
                 bibEventId={can(org.role, "manage_event") ? eventId : null}
                 cancel={can(org.role, "manage_refunds") ? { eventId, refundPercentBps: event.allowRefund ? event.refundPercentBps : 0 } : null}
+                move={
+                  can(org.role, "manage_event")
+                    ? { eventId, races: event.races.map((ra) => ({ id: ra.id, code: ra.code, free: ra.capacity - ra.sold - ra.reserved })) }
+                    : null
+                }
                 closeHref={`${base}${query(f, { page: f.page })}`}
               />
             </Suspense>
@@ -371,6 +377,9 @@ const TIMELINE: Record<RegistrationDetail["timeline"][number]["kind"], string> =
   paid: "ชำระเงิน",
   kit_pickup: "รับเสื้อและบิบ",
   checkin_voided: "ยกเลิกการรับของ",
+  race_change: "เปลี่ยนระยะ",
+  transferred_in: "รับโอนสิทธิ์",
+  transferred_out: "โอนสิทธิ์",
 };
 
 async function DetailPanel({
@@ -379,6 +388,7 @@ async function DetailPanel({
   showPii,
   bibEventId,
   cancel,
+  move,
   closeHref,
 }: {
   orgId: string;
@@ -388,6 +398,8 @@ async function DetailPanel({
   bibEventId: string | null;
   /** Set when the viewer may cancel places; the policy share pre-fills the refund. */
   cancel: { eventId: string; refundPercentBps: number } | null;
+  /** Set when the viewer may move runners between races. */
+  move: { eventId: string; races: { id: string; code: string; free: number }[] } | null;
   closeHref: string;
 }) {
   const res = await api<RegistrationDetail>(`/v1/org/${orgId}/registrations/${encodeURIComponent(registrationId)}`, { auth: true });
@@ -469,6 +481,16 @@ async function DetailPanel({
           <SetBibForm key={r.id} orgId={orgId} eventId={bibEventId} registrationId={r.id} current={r.bibNumber} label={`เลขบิบของ ${displayName(r)}`} />
           <span className="text-[13px] text-muted">เว้นว่างแล้วบันทึก = ลบเลขเดิม</span>
         </div>
+      )}
+
+      {move && r.status === "confirmed" && (
+        <MoveRaceForm
+          key={`move-${r.id}`}
+          orgId={orgId}
+          eventId={move.eventId}
+          registrationId={r.id}
+          races={move.races.filter((ra) => ra.code !== r.race.code)}
+        />
       )}
 
       {cancel && r.status === "confirmed" && (

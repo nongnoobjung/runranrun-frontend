@@ -3,7 +3,7 @@
 import { useActionState, useTransition, type FormEvent } from "react";
 import { Card, Field, FormMessage } from "@/components/backoffice";
 import { buttonClass, inputClass } from "@/components/ui";
-import { isoToBangkokInput } from "@/lib/form";
+import { isoToBangkokInput, satangToInput } from "@/lib/form";
 import type { OrgFormState } from "@/lib/org-actions";
 import type { EventType } from "@/lib/types";
 import { EVENT_TYPES } from "../../event-types";
@@ -27,6 +27,12 @@ export interface EventFormValues {
   refundDeadline: string | null;
   refundPercentBps: number;
   waitlistEnabled: boolean;
+  allowTransfer: boolean;
+  transferFeeSatang: number;
+  transferDeadline: string | null;
+  allowRaceChange: boolean;
+  raceChangeFeeSatang: number;
+  raceChangeDeadline: string | null;
 }
 
 export function EventForm({
@@ -154,6 +160,38 @@ export function EventForm({
             ให้นักวิ่งเข้าคิวได้เมื่อระยะเต็ม
           </label>
           <p className="text-[13px] text-muted">ที่ว่างจากการยกเลิกหรือเพิ่มโควต้าจะเสนอให้คิวตามลำดับ คนละ 24 ชั่วโมงก่อนส่งต่อคิวถัดไป</p>
+        </Card>
+
+        <Card title="โอนสิทธิ์">
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" name="allowTransfer" defaultChecked={event.allowTransfer} className="h-5 w-5 accent-brand" />
+            ให้นักวิ่งโอนสิทธิ์ให้คนอื่นได้
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="ค่าธรรมเนียมรับโอน (บาท)" hint="ผู้รับโอนจ่าย · 0 = ฟรี" error={err("transferFeeSatang")}>
+              <input name="transferFee" type="number" min={0} step="any" inputMode="decimal" defaultValue={satangToInput(event.transferFeeSatang)} className={inputClass} />
+            </Field>
+            <Field label="โอนได้ถึง" hint="เวลาไทย · เว้นว่าง = จนถึงวันแข่ง" error={err("transferDeadline")}>
+              <input name="transferDeadline" type="datetime-local" defaultValue={isoToBangkokInput(event.transferDeadline)} className={inputClass} />
+            </Field>
+          </div>
+          <p className="text-[13px] text-muted">ผู้รับกรอกข้อมูลผู้วิ่งของตัวเอง สิทธิ์ เลขบิบ และไซซ์เสื้อย้ายไปทั้งหมด โอนไม่ได้หลังรับของหน้างาน</p>
+        </Card>
+
+        <Card title="เปลี่ยนระยะ">
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" name="allowRaceChange" defaultChecked={event.allowRaceChange} className="h-5 w-5 accent-brand" />
+            ให้นักวิ่งเปลี่ยนระยะเองได้
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="ค่าธรรมเนียมเปลี่ยนระยะ (บาท)" hint="บวกกับส่วนต่างราคา · 0 = ฟรี" error={err("raceChangeFeeSatang")}>
+              <input name="raceChangeFee" type="number" min={0} step="any" inputMode="decimal" defaultValue={satangToInput(event.raceChangeFeeSatang)} className={inputClass} />
+            </Field>
+            <Field label="เปลี่ยนได้ถึง" hint="เวลาไทย · เว้นว่าง = จนถึงวันแข่ง" error={err("raceChangeDeadline")}>
+              <input name="raceChangeDeadline" type="datetime-local" defaultValue={isoToBangkokInput(event.raceChangeDeadline)} className={inputClass} />
+            </Field>
+          </div>
+          <p className="text-[13px] text-muted">ไประยะที่แพงกว่าจ่ายส่วนต่างตามราคาที่เปิดขายตอนนั้น ไประยะที่ถูกกว่าไม่คืนส่วนต่าง ผู้จัดย้ายระยะให้เองได้ที่รายละเอียดผู้สมัคร</p>
         </Card>
 
         <Card title="นโยบายคืนเงิน">

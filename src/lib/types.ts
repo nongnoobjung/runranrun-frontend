@@ -134,6 +134,10 @@ export interface Order {
     bibNumber: string | null;
   }[];
   payment: Payment | null;
+  /** What the order paid for: new places, or a fee / price difference for a change to an existing place. */
+  purpose:
+    | { kind: "registration" }
+    | { kind: "race_change" | "transfer"; status: string; registrationId: string | null; raceCode: string };
 }
 
 export interface MyRegistration {
@@ -173,7 +177,7 @@ export type RefundStatus = "requested" | "approved" | "rejected" | "processing" 
 export interface RefundQuote {
   registrationId: string;
   eligible: boolean;
-  reason: "NOT_CONFIRMED" | "REFUND_NOT_ALLOWED" | "REFUND_CLOSED" | "ALREADY_PICKED_UP" | "REFUND_IN_PROGRESS" | null;
+  reason: "NOT_CONFIRMED" | "REFUND_NOT_ALLOWED" | "REFUND_CLOSED" | "ALREADY_PICKED_UP" | "REFUND_IN_PROGRESS" | "TRANSFER_IN_PROGRESS" | "RACE_CHANGE_IN_PROGRESS" | null;
   pricePaidSatang: number;
   percentBps: number;
   amountSatang: number;
@@ -221,4 +225,58 @@ export interface WaitlistEntry {
   race: { id: string; code: string; distanceKm: number };
   event: { slug: string; name: string; eventDate: string };
   joinedAt: string;
+}
+
+/** What a runner may do with a paid place: hand it to someone else, or move it to another race. */
+export interface ChangeOptions {
+  registrationId: string;
+  registrationNo: string;
+  raceCode: string;
+  runner: { en: string; th: string | null };
+  event: { slug: string; name: string };
+  pricePaidSatang: number;
+  transfer: {
+    allowed: boolean;
+    reason: string | null;
+    feeSatang: number;
+    until: string;
+    open: { id: string; status: "pending" | "accepted"; toEmail: string; feeSatang: number; expiresAt: string; createdAt: string } | null;
+  };
+  raceChange: {
+    allowed: boolean;
+    reason: string | null;
+    feeSatang: number;
+    until: string;
+    open: { id: string; toRaceCode: string; orderId: string; totalSatang: number; expiresAt: string } | null;
+    options: {
+      raceId: string;
+      code: string;
+      name: string;
+      distanceKm: number;
+      priceSatang: number | null;
+      priceDiffSatang: number | null;
+      dueSatang: number | null;
+      available: boolean;
+      reason: "SOLD_OUT" | "NO_PRICE_AVAILABLE" | "RACE_NOT_ELIGIBLE" | null;
+    }[];
+  };
+}
+
+export interface Transfer {
+  id: string;
+  status: "pending" | "accepted" | "completed" | "rejected" | "expired" | "cancelled";
+  toEmail: string;
+  sender: string;
+  feeSatang: number;
+  expiresAt: string;
+  createdAt: string;
+  completedAt: string | null;
+  feeOrderId: string | null;
+  registrationId: string | null;
+  race: { id: string; code: string; distanceKm: number };
+  event: { slug: string; name: string; eventDate: string };
+  shirtSize: string | null;
+  /** Only on transfers the user sent. */
+  registrationNo?: string;
+  runner?: { en: string; th: string | null };
 }

@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { buttonClass } from "@/components/ui";
 import { baht } from "@/lib/format";
 import { loadOrder } from "@/lib/orders";
+import type { Order } from "@/lib/types";
 
 export const metadata: Metadata = { title: "ชำระเงินสำเร็จ" };
 
@@ -24,6 +25,7 @@ async function Success({ params }: Pick<PageProps<"/orders/[id]/success">, "para
   const { id } = await params;
   const order = await loadOrder(id, `/orders/${id}/success`);
   if (order.status === "pending_payment") redirect(`/orders/${id}/pay`);
+  if (order.purpose.kind !== "registration") return <ChangePaid order={order} purpose={order.purpose} />;
 
   return (
     <div className="flex flex-col items-center gap-5 text-center">
@@ -55,6 +57,35 @@ async function Success({ params }: Pick<PageProps<"/orders/[id]/success">, "para
         ดูบัตรวิ่ง
       </Link>
       <p className="text-sm text-muted">เราส่งใบเสร็จไปที่อีเมลของผู้ชำระเงินแล้ว</p>
+    </div>
+  );
+}
+
+/** A paid race change or transfer fee: the place has moved, or (rarely) could not and the money goes back. */
+function ChangePaid({ order, purpose }: { order: Order; purpose: Extract<Order["purpose"], { kind: "race_change" | "transfer" }> }) {
+  const done = purpose.status === "completed";
+  const title = purpose.kind === "race_change" ? `เปลี่ยนเป็น ${purpose.raceCode} แล้ว` : `รับโอนสิทธิ์ ${purpose.raceCode} แล้ว`;
+  return (
+    <div className="flex flex-col items-center gap-5 text-center">
+      <span aria-hidden className={`grid h-20 w-20 place-items-center rounded-full text-4xl ${done ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
+        {done ? "✓" : "!"}
+      </span>
+      <div>
+        <h1 className="text-3xl font-bold">{done ? title : "ชำระเงินแล้ว แต่เปลี่ยนสิทธิ์ไม่สำเร็จ"}</h1>
+        <p className="mt-1 text-muted">
+          คำสั่งซื้อ {order.orderNo} · {baht(order.totalSatang)}
+        </p>
+        {!done && <p className="mt-2 text-sm text-muted">สิทธิ์นี้เปลี่ยนไม่ได้แล้ว เราจะคืนเงินที่ชำระเข้ามาให้</p>}
+      </div>
+      {done && purpose.registrationId ? (
+        <Link href={`/me/registrations/${purpose.registrationId}${purpose.kind === "race_change" ? "?changed=1" : ""}`} className={`${buttonClass} w-full no-underline`}>
+          ดูบัตรวิ่ง
+        </Link>
+      ) : (
+        <Link href="/me/events" className={`${buttonClass} w-full no-underline`}>
+          ไปที่งานของฉัน
+        </Link>
+      )}
     </div>
   );
 }
