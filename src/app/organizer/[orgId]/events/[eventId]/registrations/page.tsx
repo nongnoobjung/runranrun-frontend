@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { Card, EmptyState, PageHeader, Pill, smallButtonClass, smallGhostButtonClass } from "@/components/backoffice";
 import { inputClass } from "@/components/ui";
 import { api } from "@/lib/api";
-import { baht } from "@/lib/format";
+import { answerText, baht } from "@/lib/format";
 import {
   can,
   eventPath,
@@ -423,6 +423,20 @@ async function DetailPanel({ orgId, registrationId, showPii, closeHref }: { orgI
         ))}
       </dl>
       {showPii && <p className="text-[13px] text-muted">กด “แสดง” เลขบัตรแล้ว ระบบจะบันทึกชื่อคุณไว้ในประวัติการเข้าถึง</p>}
+
+      {r.answers.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="font-semibold">คำตอบฟอร์มสมัคร</h3>
+          <dl className="flex flex-col gap-2.5 rounded-[20px] bg-tint p-4 text-sm">
+            {r.answers.map((a) => (
+              <div key={a.key} className="flex flex-col gap-0.5">
+                <dt className="text-muted">{a.label}</dt>
+                <dd className="break-words">{answerText(a.value)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <h3 className="font-semibold">ประวัติ</h3>

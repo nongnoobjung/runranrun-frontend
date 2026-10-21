@@ -5,6 +5,7 @@ import { submitCheckout, type FormState } from "@/app/actions";
 import { Countdown } from "@/components/countdown";
 import { buttonClass, ErrorNote, inputClass } from "@/components/ui";
 import { baht } from "@/lib/format";
+import type { FormQuestion } from "@/lib/types";
 
 export interface Slot {
   raceId: string;
@@ -26,12 +27,14 @@ export function CheckoutForm({
   expiresAt,
   slots,
   sizes,
+  questions,
 }: {
   sessionId: string;
   eventName: string;
   expiresAt: string;
   slots: Slot[];
   sizes: SizeOption[];
+  questions: FormQuestion[];
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(submitCheckout, {});
   const [, startTransition] = useTransition();
@@ -47,7 +50,8 @@ export function CheckoutForm({
     startTransition(() => formAction(data));
   };
 
-  const firstError = Object.keys(state.fieldErrors ?? {})[0]?.match(/^p(\d+)\./)?.[1];
+  // Runners whose tab gets a red ring because something in their part of the form needs fixing.
+  const withErrors = new Set(Object.keys(state.fieldErrors ?? {}).map((k) => k.match(/^p(\d+)\./)?.[1]));
   const total = slots.reduce((s, x) => s + x.priceSatang, 0);
 
   return (
@@ -75,7 +79,7 @@ export function CheckoutForm({
               role="tab"
               aria-selected={active === i}
               onClick={() => setActive(i)}
-              className={`flex min-h-12 flex-none items-center gap-2 rounded-full border-2 bg-white py-1 pl-1.5 pr-4 ${active === i ? "border-brand" : "border-white"} ${firstError === String(i) ? "ring-2 ring-bad" : ""}`}
+              className={`flex min-h-12 flex-none items-center gap-2 rounded-full border-2 bg-white py-1 pl-1.5 pr-4 ${active === i ? "border-brand" : "border-white"} ${withErrors.has(String(i)) ? "ring-2 ring-bad" : ""}`}
             >
               <span className={`grid h-9 w-9 place-items-center rounded-full font-semibold ${active === i ? "bg-brand text-white" : "bg-ice text-brand"}`}>{i + 1}</span>
               <span className="text-left leading-tight">
@@ -152,6 +156,8 @@ export function CheckoutForm({
             </fieldset>
           )}
 
+          <Questions index={i} questions={questions.filter((q) => !q.raceIds || q.raceIds.includes(s.raceId))} err={err} />
+
           {i < slots.length - 1 && (
             <button type="button" onClick={() => setActive(i + 1)} className="self-end font-semibold text-brand">
               ผู้วิ่งคนถัดไป →
@@ -182,6 +188,95 @@ export function CheckoutForm({
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * The organiser's questions for one runner. Field names say how the action reads them:
+ * p0.q.<key> one value, p0.qm.<key> several ticked choices, p0.qc.<key> a single tick.
+ */
+function Questions({ index, questions, err }: { index: number; questions: FormQuestion[]; err: (name: string) => string | undefined }) {
+  if (questions.length === 0) return null;
+  return (
+    <fieldset className="flex flex-col gap-4 rounded-card bg-white p-5">
+      <legend className="sr-only">คำถามจากผู้จัด ผู้วิ่ง {index + 1}</legend>
+      <h3 className="text-lg font-semibold">คำถามจากผู้จัด</h3>
+      {questions.map((q) => {
+        const name = `p${index}.q.${q.key}`;
+        const error = err(name);
+        const label = (
+          <span className="text-[13px] text-muted">
+            {q.label}
+            {q.required && <span className="text-bad"> *</span>}
+          </span>
+        );
+        const help = q.helpText && <span className="text-xs text-muted">{q.helpText}</span>;
+        const problem = error && <span className="text-sm text-bad">{error}</span>;
+        const cls = `${inputClass} ${error ? "border-bad" : ""}`;
+        if (q.type === "checkbox") {
+          return (
+            <div key={q.key} className="flex flex-col gap-1">
+              <label className="flex min-h-11 items-start gap-3 text-[15px]">
+                <input type="checkbox" name={`p${index}.qc.${q.key}`} value="1" aria-invalid={Boolean(error)} className="mt-0.5 h-5 w-5 flex-none accent-brand" />
+                <span>
+                  {q.label}
+                  {q.required && <span className="text-bad"> *</span>}
+                </span>
+              </label>
+              {help}
+              {problem}
+            </div>
+          );
+        }
+        if (q.type === "multiselect") {
+          return (
+            <fieldset key={q.key} className="flex flex-col gap-1.5">
+              <legend className="mb-1.5">{label}</legend>
+              <div className="flex flex-wrap gap-2">
+                {q.options?.map((o) => (
+                  <label key={o} className="cursor-pointer">
+                    <input type="checkbox" name={`p${index}.qm.${q.key}`} value={o} className="peer sr-only" />
+                    <span className="flex min-h-11 items-center rounded-full bg-ice px-4 text-sm peer-checked:bg-brand peer-checked:text-white peer-focus-visible:outline-2 peer-focus-visible:outline-brand">
+                      {o}
+                    </span>
+                  </label>
+                ))}
+              </div>
+              {help}
+              {problem}
+            </fieldset>
+          );
+        }
+        return (
+          <label key={q.key} className="flex flex-col gap-1">
+            {label}
+            {q.type === "select" ? (
+              <select name={name} defaultValue="" aria-invalid={Boolean(error)} className={cls}>
+                <option value="">เลือก</option>
+                {q.options?.map((o) => (
+                  <option key={o} value={o}>
+                    {o}
+                  </option>
+                ))}
+              </select>
+            ) : q.type === "textarea" ? (
+              <textarea name={name} rows={3} maxLength={2000} aria-invalid={Boolean(error)} className={`${cls} min-h-24 py-2.5`} />
+            ) : (
+              <input
+                name={name}
+                type={q.type === "date" ? "date" : "text"}
+                inputMode={q.type === "number" ? "decimal" : undefined}
+                maxLength={q.type === "text" ? 200 : undefined}
+                aria-invalid={Boolean(error)}
+                className={cls}
+              />
+            )}
+            {help}
+            {problem}
+          </label>
+        );
+      })}
+    </fieldset>
   );
 }
 

@@ -60,7 +60,14 @@ async function Checkout({ params }: Pick<PageProps<"/checkout/[id]">, "params">)
 
   return (
     <div className="flex flex-col gap-3">
-      <CheckoutForm sessionId={session.id} eventName={event.name.th} expiresAt={session.expiresAt} slots={slots} sizes={sizes} />
+      <CheckoutForm
+        sessionId={session.id}
+        eventName={event.name.th}
+        expiresAt={session.expiresAt}
+        slots={slots}
+        sizes={sizes}
+        questions={event.questions ?? []}
+      />
       <form action={cancelCheckout.bind(null, session.id, event.slug)} className="self-center">
         <button type="submit" className="px-4 py-2 text-sm text-muted underline hover:text-ink">
           ยกเลิกและคืนที่ที่จองไว้
