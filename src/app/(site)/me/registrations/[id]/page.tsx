@@ -6,11 +6,11 @@ import { EventBanner } from "@/components/banner";
 import { Qr } from "@/components/qr";
 import { api } from "@/lib/api";
 import { baht, fmt } from "@/lib/format";
-import type { MyRegistration, RefundQuote } from "@/lib/types";
+import type { ChangeOptions, MyRegistration, RefundQuote } from "@/lib/types";
 
 export const metadata: Metadata = { title: "บัตรวิ่ง" };
 
-export default function TicketPage({ params }: PageProps<"/me/registrations/[id]">) {
+export default function TicketPage({ params, searchParams }: PageProps<"/me/registrations/[id]">) {
   return (
     <div className="bg-sky pb-12">
       <div className="mx-auto max-w-[440px] px-4 pt-6">
@@ -18,18 +18,19 @@ export default function TicketPage({ params }: PageProps<"/me/registrations/[id]
           ← งานของฉัน
         </Link>
         <Suspense fallback={<div className="h-[560px] animate-pulse rounded-[28px] bg-white/60" aria-busy="true" />}>
-          <Ticket params={params} />
+          <Ticket params={params} searchParams={searchParams} />
         </Suspense>
       </div>
     </div>
   );
 }
 
-async function Ticket({ params }: Pick<PageProps<"/me/registrations/[id]">, "params">) {
-  const { id } = await params;
-  const [res, refund] = await Promise.all([
+async function Ticket({ params, searchParams }: Pick<PageProps<"/me/registrations/[id]">, "params" | "searchParams">) {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const [res, refund, changes] = await Promise.all([
     api<MyRegistration>(`/v1/me/registrations/${encodeURIComponent(id)}`, { auth: true }),
     api<RefundQuote>(`/v1/me/registrations/${encodeURIComponent(id)}/refund`, { auth: true }),
+    api<ChangeOptions>(`/v1/me/registrations/${encodeURIComponent(id)}/changes`, { auth: true }),
   ]);
   if (!res.ok) {
     if (res.status === 401) redirect(`/login?next=/me/registrations/${id}`);
@@ -40,6 +41,11 @@ async function Ticket({ params }: Pick<PageProps<"/me/registrations/[id]">, "par
 
   return (
     <article className="overflow-hidden rounded-[28px] bg-white shadow-[0_14px_34px_rgba(14,42,71,.14)]">
+      {query.changed === "1" && (
+        <p role="status" className="bg-ok-soft px-5 py-3 text-sm font-semibold text-ok">
+          เปลี่ยนเป็น {r.race.code} แล้ว{r.bibNumber ? ` · บิบใหม่ ${r.bibNumber}` : ""}
+        </p>
+      )}
       <EventBanner
         slug={r.event.slug}
         type="road"
@@ -95,8 +101,43 @@ async function Ticket({ params }: Pick<PageProps<"/me/registrations/[id]">, "par
           </>
         )}
       </dl>
+      {changes.ok && <ChangeLinks options={changes.data} />}
       {refund.ok && <RefundNote quote={refund.data} registrationId={r.id} />}
     </article>
+  );
+}
+
+/** An open transfer or race change, or the ways to start one while the event allows it. */
+function ChangeLinks({ options: o }: { options: ChangeOptions }) {
+  const base = `/me/registrations/${o.registrationId}`;
+  if (o.transfer.open) {
+    return (
+      <Link href={`${base}/transfer`} className="mx-5 mb-3 block rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn no-underline">
+        กำลังโอนสิทธิ์ให้ {o.transfer.open.toEmail} →
+      </Link>
+    );
+  }
+  if (o.raceChange.open) {
+    return (
+      <Link href={`${base}/race-change`} className="mx-5 mb-3 block rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn no-underline">
+        รอชำระเงินเพื่อเปลี่ยนเป็น {o.raceChange.open.toRaceCode} →
+      </Link>
+    );
+  }
+  if (!o.transfer.allowed && !o.raceChange.allowed) return null;
+  return (
+    <nav aria-label="เปลี่ยนแปลงสิทธิ์" className="mx-5 mb-3 grid grid-cols-2 gap-2">
+      {o.raceChange.allowed && (
+        <Link href={`${base}/race-change`} className="flex min-h-11 items-center justify-center rounded-full bg-ice px-3 text-sm font-semibold text-brand no-underline">
+          เปลี่ยนระยะ
+        </Link>
+      )}
+      {o.transfer.allowed && (
+        <Link href={`${base}/transfer`} className="flex min-h-11 items-center justify-center rounded-full bg-ice px-3 text-sm font-semibold text-brand no-underline">
+          โอนสิทธิ์ให้คนอื่น
+        </Link>
+      )}
+    </nav>
   );
 }
 

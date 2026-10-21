@@ -112,6 +112,15 @@ const PROBLEM_TH: Record<string, string> = {
   LAST_OWNER: "ทีมต้องมีเจ้าของอย่างน้อยหนึ่งคน เพิ่มเจ้าของอีกคนก่อน",
   TOO_MANY_QUESTIONS: "ฟอร์มหนึ่งงานมีคำถามเพิ่มเติมได้ไม่เกิน 30 ข้อ",
   QUESTION_IN_USE: "มีคนตอบคำถามนี้แล้ว จึงเปลี่ยนประเภทไม่ได้ สร้างคำถามใหม่แทน",
+  TRANSFER_NOT_ALLOWED: "งานนี้ไม่เปิดให้โอนสิทธิ์",
+  TRANSFER_CLOSED: "หมดเวลาโอนสิทธิ์ของงานนี้แล้ว",
+  TRANSFER_IN_PROGRESS: "สิทธิ์นี้กำลังโอนให้คนอื่นอยู่ ยกเลิกการโอนก่อน",
+  TRANSFER_UNAVAILABLE: "สิทธิ์นี้โอนไม่ได้แล้ว เจ้าของอาจรับของหน้างานหรือยกเลิกสิทธิ์ไปแล้ว",
+  SELF_TRANSFER: "ใส่อีเมลของคนที่จะรับสิทธิ์ ไม่ใช่อีเมลของคุณเอง",
+  RACE_CHANGE_NOT_ALLOWED: "งานนี้ไม่เปิดให้เปลี่ยนระยะ",
+  RACE_CHANGE_CLOSED: "หมดเวลาเปลี่ยนระยะของงานนี้แล้ว",
+  RACE_CHANGE_IN_PROGRESS: "มีการเปลี่ยนระยะที่รอชำระเงินอยู่",
+  RACE_NOT_ELIGIBLE: "อายุหรือเพศของผู้วิ่งไม่ตรงเงื่อนไขของระยะนี้",
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */

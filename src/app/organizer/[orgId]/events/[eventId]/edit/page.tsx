@@ -63,6 +63,8 @@ async function EditEvent({ params }: Pick<PageProps<"/organizer/[orgId]/events/[
               registrationClosesAt: event.registrationClosesAt, holdMinutes: event.holdMinutes,
               allowRefund: event.allowRefund, refundDeadline: event.refundDeadline, refundPercentBps: event.refundPercentBps,
               waitlistEnabled: event.waitlistEnabled,
+              allowTransfer: event.allowTransfer, transferFeeSatang: event.transferFeeSatang, transferDeadline: event.transferDeadline,
+              allowRaceChange: event.allowRaceChange, raceChangeFeeSatang: event.raceChangeFeeSatang, raceChangeDeadline: event.raceChangeDeadline,
             }}
             slugLocked={event.status !== "draft"}
             readOnly={!canEdit}

@@ -75,11 +75,12 @@ const ANSWER_ERROR_TH: Record<string, string> = {
 
 /**
  * Turns API validation paths into form field names: participants.0.runner.birthDate → p0.birthDate,
- * participants.0.answers.q_ab12 → p0.q.q_ab12.
+ * participants.0.answers.q_ab12 → p0.q.q_ab12. A single runner's paths (runner.birthDate, answers.q_ab12) map to p0.
  */
 function toFieldErrors(errors: { path: string; message: string }[] | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   for (const e of errors ?? []) {
+    if (/^(runner|answers)\./.test(e.path)) e.path = `participants.0.${e.path}`;
     const answer = e.path.match(/^participants\.(\d+)\.answers\.(\w+)$/);
     if (answer) {
       out[`p${answer[1]}.q.${answer[2]}`] = ANSWER_ERROR_TH[e.message] ?? "คำตอบไม่ถูกต้อง";
@@ -90,6 +91,19 @@ function toFieldErrors(errors: { path: string; message: string }[] | undefined):
     else if (e.path.startsWith("buyer.")) out[e.path] = e.message;
   }
   return out;
+}
+
+/** Reads one runner's fields (see RunnerFields), noting the required ones left empty in `fieldErrors`. */
+function runnerOf(formData: FormData, i: number, fieldErrors: Record<string, string>) {
+  const runner: Record<string, string | undefined> = {};
+  for (const f of RUNNER_FIELDS) {
+    const v = formData.get(`p${i}.${f}`);
+    runner[f] = typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+  }
+  for (const f of ["firstNameEn", "lastNameEn", "birthDate", "idDocNumber", "emergencyName", "emergencyPhone"] as const) {
+    if (!runner[f]) fieldErrors[`p${i}.${f}`] = "จำเป็นต้องกรอก";
+  }
+  return { ...runner, nationality: runner.nationality ?? "TH" };
 }
 
 /** Collects one runner's answers; see the field names in the checkout form's Questions. The API checks them. */
@@ -116,18 +130,14 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
 
   const fieldErrors: Record<string, string> = {};
   const participants = Array.from({ length: count }, (_, i) => {
-    const runner: Record<string, string | undefined> = {};
-    for (const f of RUNNER_FIELDS) runner[f] = get(`p${i}.${f}`);
-    for (const f of ["firstNameEn", "lastNameEn", "birthDate", "idDocNumber", "emergencyName", "emergencyPhone"] as const) {
-      if (!runner[f]) fieldErrors[`p${i}.${f}`] = "จำเป็นต้องกรอก";
-    }
+    const runner = runnerOf(formData, i, fieldErrors);
     const shirt = get(`p${i}.shirt`);
     if (formData.get("needsShirt") === "1" && !shirt) fieldErrors[`p${i}.shirt`] = "เลือกไซซ์เสื้อ";
     return {
       raceId: get(`p${i}.raceId`)!,
       shirtVariantId: shirt,
       isSelf: formData.get("self") === String(i),
-      runner: { ...runner, nationality: runner.nationality ?? "TH" },
+      runner,
       answers: answersOf(formData, i),
     };
   });
@@ -238,4 +248,60 @@ export async function claimWaitlist(entryId: string): Promise<FormState> {
   const res = await api<{ checkoutSessionId: string }>(`/v1/me/waitlist/${encodeURIComponent(entryId)}/claim`, { method: "POST", auth: true });
   if (!res.ok) return { error: problemMessage(res.problem) };
   redirect(`/checkout/${res.data.checkoutSessionId}`);
+}
+
+// ---------------------------------------------------------------- transfers and race changes
+
+/** Offers the place to someone else by email. */
+export async function createTransfer(registrationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const toEmail = String(formData.get("toEmail") ?? "").trim();
+  if (!z.string().email().safeParse(toEmail).success) return { fieldErrors: { toEmail: "ใส่อีเมลให้ถูกต้อง" } };
+  const res = await api(`/v1/me/registrations/${encodeURIComponent(registrationId)}/transfers`, { method: "POST", auth: true, body: { toEmail } });
+  if (!res.ok) return { error: problemMessage(res.problem) };
+  redirect(`/me/registrations/${registrationId}/transfer`);
+}
+
+export async function cancelTransfer(transferId: string, back: string): Promise<void> {
+  await api(`/v1/me/transfers/${encodeURIComponent(transferId)}`, { method: "DELETE", auth: true });
+  redirect(back);
+}
+
+export async function declineTransfer(transferId: string): Promise<void> {
+  await api(`/v1/me/transfers/${encodeURIComponent(transferId)}/decline`, { method: "POST", auth: true });
+  redirect("/me/transfers");
+}
+
+/** The recipient takes the place: straight to their ticket, or to paying the transfer fee first. */
+export async function acceptTransfer(transferId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const fieldErrors: Record<string, string> = {};
+  const runner = runnerOf(formData, 0, fieldErrors);
+  if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนรับสิทธิ์", fieldErrors };
+  const res = await api<{ status: "completed"; registrationId: string } | { status: "pending_payment"; orderId: string }>(
+    `/v1/me/transfers/${encodeURIComponent(transferId)}/accept`,
+    { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0) } },
+  );
+  if (!res.ok) return { error: problemMessage(res.problem), fieldErrors: toFieldErrors(res.problem.errors) };
+  if (res.data.status === "pending_payment") redirect(`/orders/${res.data.orderId}/pay`);
+  redirect(`/me/registrations/${res.data.registrationId}`);
+}
+
+/** Moves the place to another race: at once when nothing is due, otherwise through paying the difference. */
+export async function requestRaceChange(registrationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const toRaceId = String(formData.get("toRaceId") ?? "");
+  if (!toRaceId) return { error: "เลือกระยะที่จะเปลี่ยนไป" };
+  const res = await api<{ status: "completed" | "pending_payment"; orderId: string }>(
+    `/v1/me/registrations/${encodeURIComponent(registrationId)}/race-changes`,
+    { method: "POST", auth: true, body: { toRaceId } },
+  );
+  if (!res.ok) {
+    if (res.problem.code === "RACE_CHANGE_IN_PROGRESS" && typeof res.problem.orderId === "string") redirect(`/orders/${res.problem.orderId}/pay`);
+    return { error: problemMessage(res.problem) };
+  }
+  if (res.data.status === "pending_payment") redirect(`/orders/${res.data.orderId}/pay`);
+  redirect(`/me/registrations/${registrationId}?changed=1`);
+}
+
+export async function cancelRaceChange(raceChangeId: string, registrationId: string): Promise<void> {
+  await api(`/v1/me/race-changes/${encodeURIComponent(raceChangeId)}`, { method: "DELETE", auth: true });
+  redirect(`/me/registrations/${registrationId}/race-change`);
 }

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { api } from "@/lib/api";
 import { problemMessage } from "@/lib/format";
+import { orgMutation, type OrgFormState } from "@/lib/org-actions";
 
 export interface RevealState {
   idDocNumber?: string;
@@ -20,4 +21,12 @@ export async function revealIdDoc(orgId: string, registrationId: string): Promis
     return { error: problemMessage(res.problem) };
   }
   return { idDocNumber: res.data.idDocNumber };
+}
+
+/** Moves the runner to another race of the event, without payment; they get the new race's next bib. */
+export async function moveRace(orgId: string, eventId: string, registrationId: string, _prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
+  const toRaceId = String(fd.get("toRaceId") ?? "");
+  if (!toRaceId) return { fieldErrors: { toRaceId: "เลือกระยะ" } };
+  const res = await orgMutation(orgId, `/events/${eventId}/registrations/${registrationId}/race-change`, "POST", { toRaceId });
+  return res.ok ? { notice: "ย้ายระยะแล้ว" } : res.state;
 }
