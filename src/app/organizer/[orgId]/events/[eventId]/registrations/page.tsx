@@ -18,6 +18,7 @@ import {
   type RegistrationList,
   type RegistrationStatus,
 } from "@/lib/org";
+import { SetBibForm } from "../bibs/bib-forms";
 import { CancelRegistrationForm } from "../requests/refund-forms";
 import { RevealId } from "./reveal-id";
 
@@ -217,6 +218,7 @@ async function Registrations({ params, searchParams }: Props) {
                 orgId={orgId}
                 registrationId={f.selected}
                 showPii={showPii}
+                bibEventId={can(org.role, "manage_event") ? eventId : null}
                 cancel={can(org.role, "manage_refunds") ? { eventId, refundPercentBps: event.allowRefund ? event.refundPercentBps : 0 } : null}
                 closeHref={`${base}${query(f, { page: f.page })}`}
               />
@@ -375,12 +377,15 @@ async function DetailPanel({
   orgId,
   registrationId,
   showPii,
+  bibEventId,
   cancel,
   closeHref,
 }: {
   orgId: string;
   registrationId: string;
   showPii: boolean;
+  /** Set when the viewer may change bib numbers. */
+  bibEventId: string | null;
   /** Set when the viewer may cancel places; the policy share pre-fills the refund. */
   cancel: { eventId: string; refundPercentBps: number } | null;
   closeHref: string;
@@ -444,17 +449,6 @@ async function DetailPanel({
       </dl>
       {showPii && <p className="text-[13px] text-muted">กด “แสดง” เลขบัตรแล้ว ระบบจะบันทึกชื่อคุณไว้ในประวัติการเข้าถึง</p>}
 
-      {cancel && r.status === "confirmed" && (
-        <CancelRegistrationForm
-          key={r.id}
-          orgId={orgId}
-          eventId={cancel.eventId}
-          registrationId={r.id}
-          defaultRefund={Math.floor((r.pricePaidSatang * cancel.refundPercentBps) / 10_000)}
-          maxRefund={r.pricePaidSatang}
-        />
-      )}
-
       {r.answers.length > 0 && (
         <div className="flex flex-col gap-2">
           <h3 className="font-semibold">คำตอบฟอร์มสมัคร</h3>
@@ -467,6 +461,25 @@ async function DetailPanel({
             ))}
           </dl>
         </div>
+      )}
+
+      {bibEventId && r.status === "confirmed" && (
+        <div className="flex flex-col gap-2">
+          <h3 className="font-semibold">เลขบิบ</h3>
+          <SetBibForm key={r.id} orgId={orgId} eventId={bibEventId} registrationId={r.id} current={r.bibNumber} label={`เลขบิบของ ${displayName(r)}`} />
+          <span className="text-[13px] text-muted">เว้นว่างแล้วบันทึก = ลบเลขเดิม</span>
+        </div>
+      )}
+
+      {cancel && r.status === "confirmed" && (
+        <CancelRegistrationForm
+          key={r.id}
+          orgId={orgId}
+          eventId={cancel.eventId}
+          registrationId={r.id}
+          defaultRefund={Math.floor((r.pricePaidSatang * cancel.refundPercentBps) / 10_000)}
+          maxRefund={r.pricePaidSatang}
+        />
       )}
 
       <div className="flex flex-col gap-2">

@@ -170,6 +170,40 @@ export interface OrgQuestion extends FormQuestion {
   answered: number;
 }
 
+export interface BibRace {
+  raceId: string;
+  code: string;
+  prefix: string | null;
+  start: number | null;
+  end: number | null;
+  /** The number the next paid runner gets; null when the race has no range. */
+  next: number | null;
+  autoAssign: boolean;
+  rangeFull: boolean;
+  confirmed: number;
+  assigned: number;
+  waiting: number;
+}
+
+export interface BibOverview {
+  races: BibRace[];
+  totals: { confirmed: number; assigned: number };
+  /** Paid runners without a number, oldest payment first (at most 200). */
+  waiting: { id: string; registrationNo: string; name: string; raceCode: string }[];
+}
+
+export interface BibImportResult {
+  rows: number;
+  changes: { line: number; registrationNo: string; name: string; from: string | null; to: string }[];
+  errors: { line: number; registrationNo: string; bib: string; message: string }[];
+  applied: boolean;
+}
+
+/** How a bib number prints: prefix plus at least four digits, the way the API issues them. */
+export function bibLabel(prefix: string | null, n: number): string {
+  return `${prefix ?? ""}${String(n).padStart(4, "0")}`;
+}
+
 export interface OrgRefund {
   id: string;
   status: RefundStatus;

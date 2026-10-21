@@ -72,6 +72,7 @@ const PROBLEM_TH: Record<string, string> = {
   REGISTRATION_NOT_FOUND: "ไม่พบผู้สมัครในงานนี้",
   ALREADY_PICKED_UP: "ผู้สมัครคนนี้รับของไปแล้ว",
   NOT_CONFIRMED: "ผู้สมัครคนนี้ยังไม่ได้ชำระเงิน หรือสิทธิ์ถูกยกเลิกแล้ว",
+  BIB_TAKEN: "เลขบิบนี้มีผู้สมัครคนอื่นใช้แล้ว",
   REFUND_NOT_ALLOWED: "งานนี้ไม่มีนโยบายคืนเงิน",
   REFUND_CLOSED: "เลยกำหนดขอคืนเงินของงานนี้แล้ว",
   REFUND_IN_PROGRESS: "มีคำขอคืนเงินของสิทธิ์นี้อยู่แล้ว",
