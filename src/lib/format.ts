@@ -70,6 +70,9 @@ const PROBLEM_TH: Record<string, string> = {
   REGISTRATION_NOT_FOUND: "ไม่พบผู้สมัครในงานนี้",
   ALREADY_PICKED_UP: "ผู้สมัครคนนี้รับของไปแล้ว",
   NOT_CONFIRMED: "ผู้สมัครคนนี้ยังไม่ได้ชำระเงิน หรือสิทธิ์ถูกยกเลิกแล้ว",
+  ALREADY_INVITED: "อีเมลนี้มีคำเชิญที่ยังไม่ตอบรับอยู่แล้ว",
+  ALREADY_MEMBER: "อีเมลนี้อยู่ในทีมแล้ว",
+  LAST_OWNER: "ทีมต้องมีเจ้าของอย่างน้อยหนึ่งคน เพิ่มเจ้าของอีกคนก่อน",
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */
