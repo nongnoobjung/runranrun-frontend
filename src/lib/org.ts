@@ -103,6 +103,8 @@ export interface OrgEvent {
   raceChangeFeeSatang: number;
   raceChangeDeadline: string | null;
   publishedAt: string | null;
+  /** The platform's check before the event first opens: when it was sent, approved, or what to fix. */
+  review: { submittedAt: string | null; reviewedAt: string | null; note: string | null };
   races: OrgRace[];
   shirt: { productId: string; nameTh: string; sizes: ShirtSize[] } | null;
   readiness: { key: ReadinessKey; ok: boolean }[];

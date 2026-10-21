@@ -25,7 +25,7 @@ export function StatusActions({
     (prev: OrgFormState, fd: FormData) => (fd.get("intent") === "close" ? close(prev) : publish(prev)),
     {},
   );
-  const canPublish = status === "draft" || status === "pending_review" || status === "closed";
+  const canPublish = status === "draft" || status === "closed";
 
   const confirmClose = (e: FormEvent<HTMLFormElement>) => {
     if (!window.confirm("ปิดรับสมัครตอนนี้? นักวิ่งจะสมัครเพิ่มไม่ได้จนกว่าคุณจะเปิดอีกครั้ง")) e.preventDefault();

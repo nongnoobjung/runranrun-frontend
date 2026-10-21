@@ -38,8 +38,14 @@ export async function updateEvent(orgId: string, eventId: string, _prev: OrgForm
 }
 
 export async function publishEvent(orgId: string, eventId: string): Promise<OrgFormState> {
-  const res = await orgMutation(orgId, `/events/${eventId}/publish`, "POST");
-  return res.ok ? { notice: "เปิดรับสมัครแล้ว นักวิ่งเห็นงานนี้บนหน้าเว็บแล้ว" } : res.state;
+  const res = await orgMutation<{ status: string }>(orgId, `/events/${eventId}/publish`, "POST");
+  if (!res.ok) return res.state;
+  return {
+    notice:
+      res.data.status === "pending_review"
+        ? "ส่งให้ทีมงานก้าวตรวจแล้ว งานจะเปิดรับสมัครทันทีที่อนุมัติ"
+        : "เปิดรับสมัครแล้ว นักวิ่งเห็นงานนี้บนหน้าเว็บแล้ว",
+  };
 }
 
 export async function closeEvent(orgId: string, eventId: string): Promise<OrgFormState> {
