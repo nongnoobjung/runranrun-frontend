@@ -26,6 +26,9 @@ export default function MyEventsPage() {
             <Link href="/me/profiles" className="text-sm font-semibold">
               ข้อมูลผู้วิ่ง →
             </Link>
+            <Link href="/me/privacy" className="text-sm font-semibold">
+              ความเป็นส่วนตัว →
+            </Link>
           </span>
         </div>
         <form action={logout}>
