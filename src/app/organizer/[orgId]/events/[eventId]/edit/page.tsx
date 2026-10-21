@@ -10,6 +10,9 @@ import { StatusActions } from "./status-actions";
 
 export const metadata: Metadata = { title: "ข้อมูลงาน" };
 
+const reviewAt = new Intl.DateTimeFormat("th-TH-u-ca-gregory", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Bangkok" });
+const at = (iso: string) => reviewAt.format(new Date(iso));
+
 export default function EditEventPage({ params }: PageProps<"/organizer/[orgId]/events/[eventId]/edit">) {
   return (
     <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-white" aria-busy="true" />}>
@@ -105,7 +108,17 @@ async function EditEvent({ params }: Pick<PageProps<"/organizer/[orgId]/events/[
                 );
               })}
             </ul>
-            {canEdit && (
+            {event.status === "pending_review" && (
+              <p role="status" className="rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">
+                รอทีมงานก้าวตรวจก่อนเปิดรับสมัคร (ส่งเมื่อ {event.review.submittedAt ? at(event.review.submittedAt) : "–"}) อนุมัติแล้วงานเปิดทันที
+              </p>
+            )}
+            {event.status === "draft" && event.review.note && (
+              <p role="alert" className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">
+                ทีมงานส่งกลับให้แก้: {event.review.note}
+              </p>
+            )}
+            {canEdit && event.status !== "pending_review" && (
               <StatusActions
                 status={event.status}
                 ready={ready}
