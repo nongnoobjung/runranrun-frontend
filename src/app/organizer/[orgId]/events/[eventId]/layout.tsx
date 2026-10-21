@@ -6,7 +6,7 @@ import { Logo } from "@/components/ui";
 import { can, EVENT_STATUS, eventPath, membership, orgEvent } from "@/lib/org";
 import { EventNav, type NavItem } from "./event-nav";
 
-const SOON = ["ฟอร์มสมัคร", "คำขอโอน / คืนเงิน", "ผลการแข่งขัน", "ส่งข่าว", "การเงิน"];
+const SOON = ["คำขอโอน / คืนเงิน", "ผลการแข่งขัน", "ส่งข่าว", "การเงิน"];
 
 export default function EventLayout({ children, params }: LayoutProps<"/organizer/[orgId]/events/[eventId]">) {
   return (
@@ -33,6 +33,7 @@ async function Sidebar({ params }: Pick<LayoutProps<"/organizer/[orgId]/events/[
     { href: p(), label: "ภาพรวม" },
     { href: p("edit"), label: "ข้อมูลงาน" },
     { href: p("races"), label: "ระยะและราคา" },
+    { href: p("form"), label: "ฟอร์มสมัคร" },
     { href: p("shirts"), label: "เสื้อและไซซ์" },
     { href: p("coupons"), label: "คูปอง" },
     { href: p("registrations"), label: "ผู้สมัคร" },
