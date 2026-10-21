@@ -18,6 +18,7 @@ import {
   type RegistrationList,
   type RegistrationStatus,
 } from "@/lib/org";
+import { CancelRegistrationForm } from "../requests/refund-forms";
 import { RevealId } from "./reveal-id";
 
 export const metadata: Metadata = { title: "ผู้สมัคร" };
@@ -212,7 +213,13 @@ async function Registrations({ params, searchParams }: Props) {
         {f.selected && (
           <div id="detail" className="scroll-mt-4 xl:order-last xl:sticky xl:top-4">
             <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-white" aria-busy="true" />}>
-              <DetailPanel orgId={orgId} registrationId={f.selected} showPii={showPii} closeHref={`${base}${query(f, { page: f.page })}`} />
+              <DetailPanel
+                orgId={orgId}
+                registrationId={f.selected}
+                showPii={showPii}
+                cancel={can(org.role, "manage_refunds") ? { eventId, refundPercentBps: event.allowRefund ? event.refundPercentBps : 0 } : null}
+                closeHref={`${base}${query(f, { page: f.page })}`}
+              />
             </Suspense>
           </div>
         )}
@@ -364,7 +371,20 @@ const TIMELINE: Record<RegistrationDetail["timeline"][number]["kind"], string> =
   checkin_voided: "ยกเลิกการรับของ",
 };
 
-async function DetailPanel({ orgId, registrationId, showPii, closeHref }: { orgId: string; registrationId: string; showPii: boolean; closeHref: string }) {
+async function DetailPanel({
+  orgId,
+  registrationId,
+  showPii,
+  cancel,
+  closeHref,
+}: {
+  orgId: string;
+  registrationId: string;
+  showPii: boolean;
+  /** Set when the viewer may cancel places; the policy share pre-fills the refund. */
+  cancel: { eventId: string; refundPercentBps: number } | null;
+  closeHref: string;
+}) {
   const res = await api<RegistrationDetail>(`/v1/org/${orgId}/registrations/${encodeURIComponent(registrationId)}`, { auth: true });
   if (!res.ok) {
     return (
@@ -423,6 +443,17 @@ async function DetailPanel({ orgId, registrationId, showPii, closeHref }: { orgI
         ))}
       </dl>
       {showPii && <p className="text-[13px] text-muted">กด “แสดง” เลขบัตรแล้ว ระบบจะบันทึกชื่อคุณไว้ในประวัติการเข้าถึง</p>}
+
+      {cancel && r.status === "confirmed" && (
+        <CancelRegistrationForm
+          key={r.id}
+          orgId={orgId}
+          eventId={cancel.eventId}
+          registrationId={r.id}
+          defaultRefund={Math.floor((r.pricePaidSatang * cancel.refundPercentBps) / 10_000)}
+          maxRefund={r.pricePaidSatang}
+        />
+      )}
 
       {r.answers.length > 0 && (
         <div className="flex flex-col gap-2">

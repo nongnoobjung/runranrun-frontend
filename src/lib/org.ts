@@ -2,7 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { api, type ApiResult } from "./api";
-import type { EventType, FormQuestion } from "./types";
+import type { EventType, FormQuestion, RefundStatus } from "./types";
 
 /** Response shapes of the organizer backoffice API (/v1/org). Money is integer satang. */
 
@@ -90,6 +90,10 @@ export interface OrgEvent {
   registrationOpensAt: string | null;
   registrationClosesAt: string | null;
   holdMinutes: number;
+  allowRefund: boolean;
+  refundDeadline: string | null;
+  /** Share paid back, in basis points (8000 = 80%). */
+  refundPercentBps: number;
   publishedAt: string | null;
   races: OrgRace[];
   shirt: { productId: string; nameTh: string; sizes: ShirtSize[] } | null;
@@ -166,6 +170,27 @@ export interface OrgQuestion extends FormQuestion {
   answered: number;
 }
 
+export interface OrgRefund {
+  id: string;
+  status: RefundStatus;
+  amountSatang: number;
+  reason: string | null;
+  /** false when the organiser cancelled the place themselves. */
+  requestedByRunner: boolean;
+  createdAt: string;
+  updatedAt: string;
+  note: string | null;
+  transferReference: string | null;
+  paymentMethod: string | null;
+  bank: { bankCode: string; accountName: string; accountNumber: string } | null;
+  registration: { id: string; registrationNo: string; name: string; raceCode: string; bibNumber: string | null; status: RegistrationStatus; pricePaidSatang: number };
+}
+
+export interface RefundList {
+  items: OrgRefund[];
+  counts: { requested: number; approved: number; closed: number };
+}
+
 export interface CheckinRegistration extends OrgRegistration {
   emergencyName: string | null;
 }
@@ -191,6 +216,7 @@ const PERMISSIONS = {
   view_pii: ["owner", "admin"],
   checkin: ["owner", "admin", "staff"],
   manage_team: ["owner"],
+  manage_refunds: ["owner", "admin", "finance"],
 } as const satisfies Record<string, readonly OrgRole[]>;
 
 export type OrgPermission = keyof typeof PERMISSIONS;

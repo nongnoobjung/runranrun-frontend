@@ -148,3 +148,36 @@ export interface MyRegistration {
   event: { slug: string; name: string; eventDate: string; venue: string | null; coverImageUrl: string | null };
   orderNo: string;
 }
+
+/** Thai bank codes the refund form offers. */
+export const BANKS: Record<string, string> = {
+  KBANK: "ธนาคารกสิกรไทย",
+  SCB: "ธนาคารไทยพาณิชย์",
+  BBL: "ธนาคารกรุงเทพ",
+  KTB: "ธนาคารกรุงไทย",
+  BAY: "ธนาคารกรุงศรีอยุธยา",
+  TTB: "ธนาคารทหารไทยธนชาต",
+  GSB: "ธนาคารออมสิน",
+  KKP: "ธนาคารเกียรตินาคินภัทร",
+  CIMBT: "ธนาคารซีไอเอ็มบี ไทย",
+  UOBT: "ธนาคารยูโอบี",
+  LHBANK: "ธนาคารแลนด์ แอนด์ เฮ้าส์",
+  BAAC: "ธ.ก.ส.",
+};
+
+export type RefundStatus = "requested" | "approved" | "rejected" | "processing" | "succeeded" | "failed";
+
+/** What a runner would get back today, or why they cannot ask (an API problem code). */
+export interface RefundQuote {
+  registrationId: string;
+  eligible: boolean;
+  reason: "NOT_CONFIRMED" | "REFUND_NOT_ALLOWED" | "REFUND_CLOSED" | "ALREADY_PICKED_UP" | "REFUND_IN_PROGRESS" | null;
+  pricePaidSatang: number;
+  percentBps: number;
+  amountSatang: number;
+  refundUntil: string;
+  paymentMethod: string | null;
+  needsBankAccount: boolean;
+  allowTransfer: boolean;
+  lastRequest: { id: string; status: RefundStatus; amountSatang: number; createdAt: string; note: string | null } | null;
+}

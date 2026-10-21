@@ -5,8 +5,8 @@ import { Suspense } from "react";
 import { EventBanner } from "@/components/banner";
 import { Qr } from "@/components/qr";
 import { api } from "@/lib/api";
-import { fmt } from "@/lib/format";
-import type { MyRegistration } from "@/lib/types";
+import { baht, fmt } from "@/lib/format";
+import type { MyRegistration, RefundQuote } from "@/lib/types";
 
 export const metadata: Metadata = { title: "บัตรวิ่ง" };
 
@@ -27,7 +27,10 @@ export default function TicketPage({ params }: PageProps<"/me/registrations/[id]
 
 async function Ticket({ params }: Pick<PageProps<"/me/registrations/[id]">, "params">) {
   const { id } = await params;
-  const res = await api<MyRegistration>(`/v1/me/registrations/${encodeURIComponent(id)}`, { auth: true });
+  const [res, refund] = await Promise.all([
+    api<MyRegistration>(`/v1/me/registrations/${encodeURIComponent(id)}`, { auth: true }),
+    api<RefundQuote>(`/v1/me/registrations/${encodeURIComponent(id)}/refund`, { auth: true }),
+  ]);
   if (!res.ok) {
     if (res.status === 401) redirect(`/login?next=/me/registrations/${id}`);
     notFound();
@@ -92,6 +95,31 @@ async function Ticket({ params }: Pick<PageProps<"/me/registrations/[id]">, "par
           </>
         )}
       </dl>
+      {refund.ok && <RefundNote quote={refund.data} registrationId={r.id} />}
     </article>
+  );
+}
+
+/** Where the runner's refund stands, or the way to ask for one while the policy allows it. */
+function RefundNote({ quote, registrationId }: { quote: RefundQuote; registrationId: string }) {
+  const last = quote.lastRequest;
+  if (last?.status === "requested") {
+    return (
+      <p role="status" className="mx-5 mb-5 rounded-2xl bg-warn-soft px-4 py-3 text-sm text-warn">
+        ส่งคำขอคืนเงิน {baht(last.amountSatang)} แล้ว รอผู้จัดตอบ ระหว่างนี้รับของหน้างานไม่ได้
+      </p>
+    );
+  }
+  return (
+    <div className="mx-5 mb-5 flex flex-col gap-2">
+      {last?.status === "rejected" && (
+        <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">ผู้จัดปฏิเสธคำขอคืนเงิน{last.note ? `: ${last.note}` : ""}</p>
+      )}
+      {quote.eligible && (
+        <Link href={`/me/registrations/${registrationId}/refund`} className="self-center text-sm text-muted">
+          ไปวิ่งไม่ได้? ขอยกเลิกและคืนเงิน {baht(quote.amountSatang)}
+        </Link>
+      )}
+    </div>
   );
 }

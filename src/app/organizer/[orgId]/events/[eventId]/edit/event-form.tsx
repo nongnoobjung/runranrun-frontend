@@ -23,6 +23,9 @@ export interface EventFormValues {
   registrationOpensAt: string | null;
   registrationClosesAt: string | null;
   holdMinutes: number;
+  allowRefund: boolean;
+  refundDeadline: string | null;
+  refundPercentBps: number;
 }
 
 export function EventForm({
@@ -140,6 +143,29 @@ export function EventForm({
             </Field>
             <Field label="จองที่ไว้ระหว่างกรอกข้อมูล (นาที)" hint="5–120 นาที" error={err("holdMinutes")}>
               <input name="holdMinutes" type="number" min={5} max={120} defaultValue={event.holdMinutes} className={inputClass} />
+            </Field>
+          </div>
+        </Card>
+
+        <Card title="นโยบายคืนเงิน">
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" name="allowRefund" defaultChecked={event.allowRefund} className="h-5 w-5 accent-brand" />
+            ให้นักวิ่งขอคืนเงินได้
+          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="คืนกี่ % ของค่าสมัคร" hint="ค่าธรรมเนียมชำระเงินไม่คืน" error={err("refundPercentBps")}>
+              <input
+                name="refundPercent"
+                type="number"
+                min={0}
+                max={100}
+                step="any"
+                defaultValue={event.refundPercentBps / 100}
+                className={inputClass}
+              />
+            </Field>
+            <Field label="ขอคืนได้ถึง" hint="เวลาไทย · เว้นว่าง = จนถึงวันแข่ง" error={err("refundDeadline")}>
+              <input name="refundDeadline" type="datetime-local" defaultValue={isoToBangkokInput(event.refundDeadline)} className={inputClass} />
             </Field>
           </div>
         </Card>

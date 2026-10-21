@@ -186,3 +186,30 @@ export async function cancelCheckout(sessionId: string, slug: string): Promise<v
   await api(`/v1/checkout/sessions/${sessionId}`, { method: "DELETE", auth: true });
   redirect(`/events/${slug}`);
 }
+
+// ---------------------------------------------------------------- refunds
+
+/** A runner gives up their place and asks for the policy amount back, into the bank account they type. */
+export async function requestRefund(registrationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const get = (name: string) => {
+    const v = formData.get(name);
+    return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+  };
+  const choice = get("reasonChoice");
+  const reason = choice === "อื่น ๆ" || !choice ? get("reasonOther") : [choice, get("reasonOther")].filter(Boolean).join(" · ");
+  const needsBank = formData.get("needsBank") === "1";
+  const fieldErrors: Record<string, string> = {};
+  if (!reason) fieldErrors.reasonOther = "บอกเหตุผลสั้น ๆ";
+  const bank = needsBank ? { bankCode: get("bankCode"), accountNumber: get("accountNumber"), accountName: get("accountName") } : undefined;
+  if (bank) for (const [k, v] of Object.entries(bank)) if (!v) fieldErrors[`bank.${k}`] = "จำเป็นต้องกรอก";
+  if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนส่งคำขอ", fieldErrors };
+
+  const res = await api(`/v1/me/registrations/${encodeURIComponent(registrationId)}/refund-requests`, { method: "POST", auth: true, body: { reason, bank } });
+  if (!res.ok) {
+    if (res.status === 401) redirect(`/login?next=/me/registrations/${registrationId}/refund`);
+    const errors: Record<string, string> = {};
+    for (const e of res.problem.errors ?? []) if (e.path.startsWith("bank.")) errors[e.path] = e.path === "bank.accountNumber" ? "เลขบัญชี 10–15 หลัก" : "ตรวจสอบช่องนี้";
+    return { error: problemMessage(res.problem), fieldErrors: errors };
+  }
+  redirect(`/me/registrations/${registrationId}?refund=requested`);
+}
