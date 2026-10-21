@@ -26,6 +26,7 @@ export interface EventFormValues {
   allowRefund: boolean;
   refundDeadline: string | null;
   refundPercentBps: number;
+  waitlistEnabled: boolean;
 }
 
 export function EventForm({
@@ -145,6 +146,14 @@ export function EventForm({
               <input name="holdMinutes" type="number" min={5} max={120} defaultValue={event.holdMinutes} className={inputClass} />
             </Field>
           </div>
+        </Card>
+
+        <Card title="คิว waitlist">
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" name="waitlistEnabled" defaultChecked={event.waitlistEnabled} className="h-5 w-5 accent-brand" />
+            ให้นักวิ่งเข้าคิวได้เมื่อระยะเต็ม
+          </label>
+          <p className="text-[13px] text-muted">ที่ว่างจากการยกเลิกหรือเพิ่มโควต้าจะเสนอให้คิวตามลำดับ คนละ 24 ชั่วโมงก่อนส่งต่อคิวถัดไป</p>
         </Card>
 
         <Card title="นโยบายคืนเงิน">

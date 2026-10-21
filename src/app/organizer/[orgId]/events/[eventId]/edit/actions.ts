@@ -19,6 +19,7 @@ export async function updateEvent(orgId: string, eventId: string, _prev: OrgForm
     registrationClosesAt: bangkokToIso(text(fd, "registrationClosesAt")),
     holdMinutes: num(fd, "holdMinutes") ?? 15,
     allowRefund: fd.get("allowRefund") === "on",
+    waitlistEnabled: fd.get("waitlistEnabled") === "on",
     refundDeadline: bangkokToIso(text(fd, "refundDeadline")),
   };
   // Typed as a percentage, sent as basis points.

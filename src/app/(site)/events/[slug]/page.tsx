@@ -140,7 +140,7 @@ async function EventContent({ params }: Pick<PageProps<"/events/[slug]">, "param
               <h2 className="text-[22px] font-bold">เลือกระยะ</h2>
               {best.length > 0 && <Chip className="text-[13px]">เริ่ม {baht(Math.min(...best.map((r) => r.priceSatang!)))}</Chip>}
             </div>
-            <RacePicker eventId={e.id} slug={e.slug} races={e.races} />
+            <RacePicker eventId={e.id} slug={e.slug} races={e.races} waitlist={e.policy.waitlist} />
           </div>
           <div className="flex items-center gap-3.5 rounded-card bg-tint p-4">
             <span aria-hidden className="grid h-12 w-12 flex-none place-items-center rounded-full bg-ink font-bold text-white">

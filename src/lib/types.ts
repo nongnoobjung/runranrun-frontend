@@ -207,3 +207,18 @@ export interface PublicResults {
   items: RaceResult[];
   total: number;
 }
+
+/** The signed-in runner's place in a race's waitlist. */
+export interface WaitlistEntry {
+  id: string;
+  status: "waiting" | "offered";
+  position: number;
+  /** Runners still waiting ahead of this one. */
+  ahead: number;
+  offerExpiresAt: string | null;
+  checkoutSessionId: string | null;
+  priceSatang: number | null;
+  race: { id: string; code: string; distanceKm: number };
+  event: { slug: string; name: string; eventDate: string };
+  joinedAt: string;
+}

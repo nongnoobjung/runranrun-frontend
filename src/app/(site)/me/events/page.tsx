@@ -14,7 +14,12 @@ export default function MyEventsPage() {
   return (
     <div className="mx-auto flex max-w-[760px] flex-col gap-5 px-4 py-8">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-bold">งานของฉัน</h1>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <h1 className="text-3xl font-bold">งานของฉัน</h1>
+          <Link href="/me/waitlist" className="text-sm font-semibold">
+            คิว waitlist →
+          </Link>
+        </div>
         <form action={logout}>
           <button type="submit" className="px-3 py-2 text-sm text-muted underline hover:text-ink">
             ออกจากระบบ

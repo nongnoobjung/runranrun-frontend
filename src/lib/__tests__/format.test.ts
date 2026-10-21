@@ -13,9 +13,10 @@ describe("format", () => {
     expect(fmt.dayOfMonth("2027-02-04")).toBe("04");
   });
 
-  it("counts down as mm:ss and never goes negative", () => {
+  it("counts down as mm:ss (h:mm:ss past an hour) and never goes negative", () => {
     expect(countdown(14 * 60_000 + 59_400)).toBe("14:59");
     expect(countdown(-5000)).toBe("00:00");
+    expect(countdown(23 * 3_600_000 + 41 * 60_000 + 9_000)).toBe("23:41:09");
   });
 
   it("translates known API problems and falls back to the API's text", () => {
