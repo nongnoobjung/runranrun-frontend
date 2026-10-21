@@ -39,6 +39,7 @@ async function Sidebar({ params }: Pick<LayoutProps<"/organizer/[orgId]/events/[
     { href: p("registrations"), label: "ผู้สมัคร" },
     { href: p("bibs"), label: "บิบ" },
     ...(can(org.role, "manage_refunds") ? [{ href: p("requests"), label: "คำขอคืนเงิน" }] : []),
+    { href: p("waitlist"), label: "Waitlist" },
     ...(can(org.role, "checkin") ? [{ href: p("checkin"), label: "หน้างาน · รับของ" }] : []),
     { href: p("results"), label: "ผลการแข่งขัน" },
     ...(can(org.role, "view_finance") ? [{ href: p("finance"), label: "การเงิน" }] : []),

@@ -50,7 +50,10 @@ export function distanceLabel(km: number): string {
 /** Minutes left as mm:ss, never negative. */
 export function countdown(msLeft: number): string {
   const total = Math.max(0, Math.floor(msLeft / 1000));
-  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+  const ss = String(total % 60).padStart(2, "0");
+  // Long waits (a 24-hour waitlist offer) read as h:mm:ss; checkout holds stay mm:ss.
+  if (total >= 3600) return `${Math.floor(total / 3600)}:${String(Math.floor((total % 3600) / 60)).padStart(2, "0")}:${ss}`;
+  return `${String(Math.floor(total / 60)).padStart(2, "0")}:${ss}`;
 }
 
 const PROBLEM_TH: Record<string, string> = {
@@ -88,6 +91,10 @@ const PROBLEM_TH: Record<string, string> = {
   REGISTRATION_NOT_FOUND: "ไม่พบผู้สมัครในงานนี้",
   ALREADY_PICKED_UP: "ผู้สมัครคนนี้รับของไปแล้ว",
   NOT_CONFIRMED: "ผู้สมัครคนนี้ยังไม่ได้ชำระเงิน หรือสิทธิ์ถูกยกเลิกแล้ว",
+  WAITLIST_DISABLED: "งานนี้ไม่มีคิว waitlist",
+  RACE_NOT_FULL: "ระยะนี้ยังมีที่ว่าง สมัครได้เลย",
+  ALREADY_IN_WAITLIST: "คุณอยู่ในคิวของระยะนี้แล้ว",
+  NO_OFFER: "ตอนนี้ยังไม่ถึงคิวคุณ หรือหมดเวลารับสิทธิ์แล้ว",
   NO_RESULTS: "ยังไม่มีผลให้เผยแพร่ นำเข้าไฟล์ผลก่อน",
   RESULTS_NOT_PUBLISHED: "ผลการแข่งขันยังไม่ออก",
   BIB_TAKEN: "เลขบิบนี้มีผู้สมัครคนอื่นใช้แล้ว",

@@ -213,3 +213,29 @@ export async function requestRefund(registrationId: string, _prev: FormState, fo
   }
   redirect(`/me/registrations/${registrationId}?refund=requested`);
 }
+
+// ---------------------------------------------------------------- waitlist
+
+/** Joins the queue of the full race whose button was pressed (its value is the race id). */
+export async function joinWaitlist(_prev: FormState, formData: FormData): Promise<FormState> {
+  const slug = String(formData.get("slug") ?? "");
+  if (!(await getToken())) redirect(`/login?next=/events/${encodeURIComponent(slug)}`);
+  const res = await api("/v1/me/waitlist", { method: "POST", auth: true, body: { raceId: formData.get("raceId") } });
+  if (!res.ok && res.problem.code !== "ALREADY_IN_WAITLIST") {
+    if (res.status === 401) redirect(`/login?next=/events/${encodeURIComponent(slug)}`);
+    return { error: problemMessage(res.problem) };
+  }
+  redirect("/me/waitlist");
+}
+
+export async function leaveWaitlist(entryId: string): Promise<void> {
+  await api(`/v1/me/waitlist/${encodeURIComponent(entryId)}`, { method: "DELETE", auth: true });
+  redirect("/me/waitlist");
+}
+
+/** Takes up an offered place and goes to the checkout that now holds it. */
+export async function claimWaitlist(entryId: string): Promise<FormState> {
+  const res = await api<{ checkoutSessionId: string }>(`/v1/me/waitlist/${encodeURIComponent(entryId)}/claim`, { method: "POST", auth: true });
+  if (!res.ok) return { error: problemMessage(res.problem) };
+  redirect(`/checkout/${res.data.checkoutSessionId}`);
+}

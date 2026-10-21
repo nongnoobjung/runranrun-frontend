@@ -94,6 +94,7 @@ export interface OrgEvent {
   refundDeadline: string | null;
   /** Share paid back, in basis points (8000 = 80%). */
   refundPercentBps: number;
+  waitlistEnabled: boolean;
   publishedAt: string | null;
   races: OrgRace[];
   shirt: { productId: string; nameTh: string; sizes: ShirtSize[] } | null;
@@ -322,6 +323,17 @@ export interface ResultsImport {
   warnings: ResultIssue[];
   races: ({ code: string } & Record<ResultStatus, number>)[];
   applied: boolean;
+}
+
+export interface EventWaitlist {
+  races: {
+    raceId: string;
+    code: string;
+    /** Places nobody holds right now; the next offer run gives them to the queue. */
+    free: number;
+    counts: { waiting: number; offered: number; converted: number; expired: number };
+    entries: { id: string; position: number; status: "waiting" | "offered"; name: string; email: string; joinedAt: string; offeredAt: string | null; offerExpiresAt: string | null; claimed: boolean }[];
+  }[];
 }
 
 export interface CheckinRegistration extends OrgRegistration {
