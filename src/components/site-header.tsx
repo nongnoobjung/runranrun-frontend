@@ -33,7 +33,7 @@ export function SiteHeader() {
       <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-x-9 gap-y-3 px-4 py-4 sm:px-7">
         <Logo />
         <nav aria-label="เมนูหลัก" className="hidden flex-1 gap-7 text-[15px] md:flex">
-          <Link href="/" className="font-semibold text-ink no-underline">
+          <Link href="/events" className="font-semibold text-ink no-underline">
             หางานวิ่ง
           </Link>
           <span className="text-muted" title="เร็ว ๆ นี้">ผลการแข่งขัน</span>

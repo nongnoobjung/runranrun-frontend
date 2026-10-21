@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { EventCard } from "@/components/event-card";
 import { apiOrThrow } from "@/lib/api";
@@ -36,7 +37,12 @@ async function UpcomingEvents() {
   }
   return (
     <>
-      <p className="-mt-3 text-sm text-muted">เปิดรับสมัคร {total} งาน</p>
+      <p className="-mt-3 flex flex-wrap justify-between gap-2 text-sm text-muted">
+        <span>เปิดรับสมัคร {total} งาน</span>
+        <Link href="/events" className="font-semibold">
+          ค้นหาตามจังหวัด เดือน และระยะ →
+        </Link>
+      </p>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-5">
         {items.map((e) => (
           <EventCard key={e.id} event={e} />
