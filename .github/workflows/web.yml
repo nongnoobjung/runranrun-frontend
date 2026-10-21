@@ -1,0 +1,69 @@
+name: web
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+        env:
+          API_URL: http://localhost:4000
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kao
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/kao
+      JWT_SECRET: ci-jwt-secret-that-is-long-enough-0123456789
+      PII_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      PII_HASH_KEY: ci-pii-hash-key-that-is-long-enough-0123
+      ENABLE_DEV_ENDPOINTS: "true"
+      PAYMENT_GATEWAY: fake
+      API_URL: http://localhost:4000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nongnoobjung/runranrun-api
+          path: api
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start API
+        working-directory: api
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm db:migrate
+          pnpm db:seed
+          (cd apps/api && nohup node -r @swc-node/register src/main.ts > ../../api.log 2>&1 &)
+          for i in $(seq 1 30); do curl -sf localhost:4000/v1/health && break; sleep 2; done
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+      - if: failure()
+        run: cat api/api.log

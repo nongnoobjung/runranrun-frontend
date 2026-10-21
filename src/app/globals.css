@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Design D tokens (sky / white CI). Every colour used in components comes from here. */
+@theme {
+  --color-ink: #0e2a47;
+  --color-muted: #4c6178;
+  --color-brand: #1270cc;
+  --color-brand-dark: #0b4f94;
+  --color-sky: #8fcbfa;
+  --color-sky-soft: #b9dffc;
+  --color-ice: #eaf5fe;
+  --color-tint: #f2f8fe;
+  --color-line: #e3eef9;
+  --color-line-strong: #c8ddf2;
+  --color-night: #1b2b5a;
+  --color-night-ground: #0b1530;
+
+  --color-ok: #1e7b4a;
+  --color-ok-soft: #e3f6ea;
+  --color-warn: #8a5300;
+  --color-warn-soft: #fff1d6;
+  --color-bad: #b3261e;
+  --color-bad-soft: #fde4e2;
+  --color-line-green: #06c755;
+
+  --radius-card: 1.5rem;
+  --radius-panel: 2.25rem;
+}
+
+@theme inline {
+  --font-sans: var(--font-prompt), system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-brand;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
