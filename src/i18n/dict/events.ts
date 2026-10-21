@@ -15,6 +15,16 @@ export default defineDict({
     rank: (n: number | null) => `อันดับ ${n}`,
     bib: (bib: string) => `บิบ ${bib}`,
 
+    /** The photo strip and full-screen viewer on the event page. */
+    gallery: {
+      open: (n: number) => `เปิดรูปที่ ${n}`,
+      close: "ปิด",
+      prev: "รูปก่อนหน้า",
+      next: "รูปถัดไป",
+      of: (i: number, n: number) => `${i} / ${n}`,
+      photo: "รูปจากงาน",
+    },
+
     /** The waiting room: on the event page and at /events/[slug]/queue. */
     queue: {
       title: "คิวสมัคร",
@@ -84,6 +94,10 @@ export default defineDict({
       places: (n: number) => `${thNum(n)} ที่`,
       placesNote: "อัปเดตทุกครั้งที่เปิดหน้า",
       about: "เกี่ยวกับงาน",
+      photos: "รูปภาพ",
+      rules: "กติกาการแข่งขัน",
+      routeMap: "แผนที่เส้นทาง",
+      routeMapOf: (code: string) => `แผนที่เส้นทาง ${code}`,
       racesAndTimes: "ระยะและเวลา",
       distance: "ระยะทาง",
       km: (km: number) => `${km} กม.`,
@@ -159,6 +173,15 @@ export default defineDict({
     rank: (n) => `Rank ${n}`,
     bib: (bib) => `Bib ${bib}`,
 
+    gallery: {
+      open: (n) => `Open photo ${n}`,
+      close: "Close",
+      prev: "Previous photo",
+      next: "Next photo",
+      of: (i, n) => `${i} / ${n}`,
+      photo: "Event photo",
+    },
+
     queue: {
       title: "Registration queue",
       admitted: "It's your turn",
@@ -226,6 +249,10 @@ export default defineDict({
       places: (n) => `${enNum(n)} ${plural(n, "place", "places")}`,
       placesNote: "Updated each time you open the page",
       about: "About the event",
+      photos: "Photos",
+      rules: "Race rules",
+      routeMap: "Route map",
+      routeMapOf: (code) => `${code} route map`,
       racesAndTimes: "Races and times",
       distance: "Distance",
       km: (km) => `${km} km`,

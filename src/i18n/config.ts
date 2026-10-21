@@ -24,8 +24,8 @@ export function unlocalizedPath(path: string): string {
   return rest.startsWith("/") ? rest : `/${rest}`;
 }
 
-/** The Thai-only backoffice, outside app/[lang]: never prefixed. */
-const UNLOCALIZED = /^\/(organizer|admin)(?=\/|\?|#|$)/;
+/** Outside app/[lang], so never prefixed: the Thai-only backoffice, and event images. */
+const UNLOCALIZED = /^\/(organizer|admin|media)(?=\/|\?|#|$)/;
 
 /** A site path in the given language: localePath("en", "/events") → "/en/events"; Thai stays unprefixed. */
 export function localePath(locale: Locale, path: string): string {

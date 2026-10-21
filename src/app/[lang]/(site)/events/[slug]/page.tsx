@@ -2,16 +2,18 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EventBanner } from "@/components/banner";
+import { Markdown } from "@/components/markdown";
 import { ScrollIntoView } from "@/components/scroll-into-view";
 import { AvailabilityPill, buttonClass, Chip } from "@/components/ui";
-import { localized } from "@/i18n/config";
 import type { Dict } from "@/i18n/dictionaries";
 import Link from "@/i18n/link";
 import { getLocale, getT } from "@/i18n/server";
 import { api } from "@/lib/api";
+import { pick } from "@/lib/content";
 import { baht, fmtFor } from "@/lib/format";
 import { getQueueToken, queueTokenExpiry } from "@/lib/session";
 import type { EventDetail } from "@/lib/types";
+import { Gallery } from "./gallery";
 import { RacePicker } from "./race-picker";
 
 async function loadEvent(slug: string): Promise<EventDetail> {
@@ -26,7 +28,13 @@ async function loadEvent(slug: string): Promise<EventDetail> {
 export async function generateMetadata({ params }: PageProps<"/[lang]/events/[slug]">): Promise<Metadata> {
   const { slug } = await params;
   const [res, locale] = await Promise.all([api<EventDetail>(`/v1/events/${encodeURIComponent(slug)}`), getLocale()]);
-  return res.ok ? { title: localized(locale, res.data.name), description: res.data.summary ?? undefined } : {};
+  if (!res.ok) return {};
+  const cover = res.data.coverImageUrl;
+  return {
+    title: pick(res.data.name, locale),
+    description: pick(res.data.summary, locale) ?? undefined,
+    openGraph: cover ? { images: [cover] } : undefined,
+  };
 }
 
 export default function EventPage({ params }: PageProps<"/[lang]/events/[slug]">) {
@@ -42,6 +50,11 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
   const [e, t, locale] = await Promise.all([loadEvent(slug), getT(), getLocale()]);
   const p = t.events.page;
   const fmt = fmtFor(locale);
+  const name = pick(e.name, locale);
+  const summary = pick(e.summary, locale);
+  const description = pick(e.description, locale);
+  const rules = pick(e.rules, locale);
+  const routeMaps = e.races.filter((r) => r.routeMapUrl);
   const shirt = e.products.find((p) => p.type === "shirt");
   const best = e.races.filter((r) => r.priceSatang !== null);
   const totalLeft = e.races.reduce((s, r) => s + r.available, 0);
@@ -60,12 +73,14 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
           imageUrl={e.coverImageUrl}
           className="mx-auto h-[340px] max-w-[1360px] rounded-panel sm:h-[380px]"
         >
+          {/* A photo can be light at the bottom; the shade keeps the white title readable on any cover. */}
+          {e.coverImageUrl && <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />}
           <div className="absolute inset-x-6 bottom-8 flex flex-col gap-3 text-white sm:inset-x-12 sm:bottom-10">
             <div className="flex flex-wrap gap-2">
               {e.races.some((r) => r.availability === "almost_full") && <AvailabilityPill value="almost_full" />}
               <span className="rounded-full bg-white/20 px-3.5 py-1 text-sm">{t.events.types[e.type]}</span>
             </div>
-            <h1 className="text-4xl font-bold leading-tight drop-shadow sm:text-[56px]">{localized(locale, e.name)}</h1>
+            <h1 className="text-4xl font-bold leading-tight break-words drop-shadow sm:text-[56px]">{name}</h1>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-[17px] text-white/90">
               <span>
                 {fmt.weekday(e.eventDate)} {fmt.date(e.eventDate)}
@@ -94,11 +109,22 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
             <Fact label={p.placesLeft} value={p.places(totalLeft)} sub={p.placesNote} />
           </section>
 
-          {(e.summary || e.description) && (
-            <section className="flex flex-col gap-2.5">
-              <h2 className="text-[26px] font-bold">{p.about}</h2>
-              {e.summary && <p className="max-w-[700px] text-ink/85">{e.summary}</p>}
-              {e.description && <p className="max-w-[700px] whitespace-pre-line text-ink/85">{e.description}</p>}
+          {(summary || description) && (
+            <section aria-labelledby="about" className="flex flex-col gap-2.5">
+              <h2 id="about" className="text-[26px] font-bold">
+                {p.about}
+              </h2>
+              {summary && <p className="max-w-[700px] text-lg font-medium text-ink">{summary}</p>}
+              {description && <Markdown>{description}</Markdown>}
+            </section>
+          )}
+
+          {e.gallery.length > 0 && (
+            <section aria-labelledby="photos" className="flex min-w-0 flex-col gap-3.5">
+              <h2 id="photos" className="text-[26px] font-bold">
+                {p.photos}
+              </h2>
+              <Gallery images={e.gallery.map((g) => ({ url: g.url, width: g.width, height: g.height, caption: pick(g.caption, locale) }))} />
             </section>
           )}
 
@@ -132,13 +158,41 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
             </section>
           )}
 
+          {routeMaps.length > 0 && (
+            <section aria-labelledby="route-maps" className="flex flex-col gap-3.5">
+              <h2 id="route-maps" className="text-[26px] font-bold">
+                {p.routeMap}
+              </h2>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+                {routeMaps.map((r) => (
+                  <a key={r.id} href={r.routeMapUrl!} target="_blank" className="flex flex-col gap-2 rounded-[20px] border-[1.5px] border-line p-3 no-underline">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- served by our own /media route */}
+                    <img src={r.routeMapUrl!} alt={p.routeMapOf(r.code)} loading="lazy" className="aspect-[4/3] w-full rounded-[14px] bg-tint object-contain" />
+                    <Chip className="self-start">{r.code}</Chip>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {rules && (
+            <section aria-labelledby="rules" className="flex flex-col gap-2.5">
+              <h2 id="rules" className="text-[26px] font-bold">
+                {p.rules}
+              </h2>
+              <Markdown>{rules}</Markdown>
+            </section>
+          )}
+
           {e.faq.length > 0 && (
-            <section className="flex flex-col gap-2.5">
-              <h2 className="text-[26px] font-bold">{p.faq}</h2>
+            <section aria-labelledby="faq" className="flex flex-col gap-2.5">
+              <h2 id="faq" className="text-[26px] font-bold">
+                {p.faq}
+              </h2>
               {e.faq.map((f) => (
-                <details key={f.q} className="rounded-[18px] bg-tint px-5 py-4">
-                  <summary className="cursor-pointer font-semibold">{f.q}</summary>
-                  <p className="mt-2 text-ink/85">{f.a}</p>
+                <details key={f.q.th} className="rounded-[18px] bg-tint px-5 py-4">
+                  <summary className="cursor-pointer font-semibold">{pick(f.q, locale)}</summary>
+                  <p className="mt-2 whitespace-pre-line text-ink/85">{pick(f.a, locale)}</p>
                 </details>
               ))}
             </section>

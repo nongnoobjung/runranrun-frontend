@@ -61,8 +61,8 @@ async function EditEvent({ params }: Pick<PageProps<"/organizer/[orgId]/events/[
             action={updateEvent.bind(null, orgId, eventId)}
             event={{
               slug: event.slug, nameTh: event.nameTh, nameEn: event.nameEn, eventType: event.eventType, eventDate: event.eventDate,
-              provinceCode: event.provinceCode, venueName: event.venueName, venueAddress: event.venueAddress, summaryTh: event.summaryTh,
-              descriptionTh: event.descriptionTh, coverImageUrl: event.coverImageUrl, registrationOpensAt: event.registrationOpensAt,
+              provinceCode: event.provinceCode, venueName: event.venueName, venueAddress: event.venueAddress,
+              registrationOpensAt: event.registrationOpensAt,
               registrationClosesAt: event.registrationClosesAt, holdMinutes: event.holdMinutes,
               allowRefund: event.allowRefund, refundDeadline: event.refundDeadline, refundPercentBps: event.refundPercentBps,
               waitlistEnabled: event.waitlistEnabled, useWaitingRoom: event.useWaitingRoom, queueAdmitPerMinute: event.queueAdmitPerMinute,
@@ -72,6 +72,12 @@ async function EditEvent({ params }: Pick<PageProps<"/organizer/[orgId]/events/[
             slugLocked={event.status !== "draft"}
             readOnly={!canEdit}
             provinces={Object.entries(PROVINCES)}
+            contentLink={
+              <p className="rounded-2xl bg-ice px-4 py-3 text-sm">
+                คำโปรย รายละเอียดงาน กติกา คำถามที่พบบ่อย และรูปภาพ (ภาษาไทยและอังกฤษ) อยู่ที่{" "}
+                <Link href={eventPath(orgId, eventId, "content")}>เนื้อหาและรูปภาพ →</Link>
+              </p>
+            }
           />
         </div>
 

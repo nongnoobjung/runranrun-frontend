@@ -12,15 +12,20 @@ export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const prefix = pathname.match(/^\/(th|en)(?=\/|$)/)?.[1] as Locale | undefined;
   const remembered = req.cookies.get(LOCALE_COOKIE)?.value;
+  // Only a page the visitor actually opens changes the remembered language: Next also prefetches links
+  // (e.g. the organiser's "English" preview) and fetches RSC payloads (?_rsc=) for client-side navigation.
+  const dest = req.headers.get("sec-fetch-dest");
+  const opened = dest ? dest === "document" || dest === "iframe" : !req.nextUrl.searchParams.has("_rsc");
   const url = req.nextUrl.clone();
 
   if (prefix === "th") {
     url.pathname = pathname.slice(3) || "/";
-    return remember(NextResponse.redirect(url), "th");
+    const res = NextResponse.redirect(url);
+    return opened ? remember(res, "th") : res;
   }
   if (prefix === "en") {
     const res = NextResponse.next({ request: { headers: withLocale(req, "en") } });
-    return alternates(remembered === "en" ? res : remember(res, "en"), req, pathname.slice(3) || "/");
+    return alternates(remembered === "en" || !opened ? res : remember(res, "en"), req, pathname.slice(3) || "/");
   }
   if (remembered === "en" && req.method === "GET") {
     url.pathname = pathname === "/" ? "/en" : `/en${pathname}`;
@@ -51,6 +56,6 @@ function alternates(res: NextResponse, req: NextRequest, bare: string): NextResp
 
 export const config = {
   // Everything except Next internals, files with an extension (favicon, the check-in service worker),
-  // and the Thai-only organiser and admin areas.
-  matcher: ["/((?!_next/|organizer(?:/|$)|admin(?:/|$)|.*\\.[\\w]+$).*)"],
+  // event images (/media), and the Thai-only organiser and admin areas.
+  matcher: ["/((?!_next/|media/|organizer(?:/|$)|admin(?:/|$)|.*\\.[\\w]+$).*)"],
 };

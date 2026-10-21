@@ -51,6 +51,7 @@ describe("locale paths", () => {
   it("never prefixes the Thai-only backoffice or other sites", () => {
     expect(localePath("en", "/organizer/abc")).toBe("/organizer/abc");
     expect(localePath("en", "/admin")).toBe("/admin");
+    expect(localePath("en", "/media/event-images/abc")).toBe("/media/event-images/abc");
     expect(localePath("en", "https://example.com/x")).toBe("https://example.com/x");
     expect(localePath("en", "//evil.example")).toBe("//evil.example");
   });

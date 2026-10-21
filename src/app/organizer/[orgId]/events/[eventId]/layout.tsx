@@ -30,6 +30,7 @@ async function Sidebar({ params }: Pick<LayoutProps<"/organizer/[orgId]/events/[
   const items: NavItem[] = [
     { href: p(), label: "ภาพรวม" },
     { href: p("edit"), label: "ข้อมูลงาน" },
+    { href: p("content"), label: "เนื้อหาและรูปภาพ" },
     { href: p("races"), label: "ระยะและราคา" },
     { href: p("form"), label: "ฟอร์มสมัคร" },
     { href: p("shirts"), label: "เสื้อและไซซ์" },
