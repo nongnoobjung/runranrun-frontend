@@ -170,12 +170,27 @@ export interface CheckinRegistration extends OrgRegistration {
   emergencyName: string | null;
 }
 
+export interface OrgMember {
+  id: string;
+  email: string;
+  name: string | null;
+  role: OrgRole;
+  /** "invited" until the person signs in with the invited email. */
+  status: "invited" | "active";
+  /** The signed-in user. */
+  you: boolean;
+  invitedAt: string;
+  acceptedAt: string | null;
+  lastLoginAt: string | null;
+}
+
 /** Mirrors the API's role table so the UI hides what the API would refuse anyway. */
 const PERMISSIONS = {
   view: ["owner", "admin", "finance", "staff", "viewer"],
   manage_event: ["owner", "admin"],
   view_pii: ["owner", "admin"],
   checkin: ["owner", "admin", "staff"],
+  manage_team: ["owner"],
 } as const satisfies Record<string, readonly OrgRole[]>;
 
 export type OrgPermission = keyof typeof PERMISSIONS;
