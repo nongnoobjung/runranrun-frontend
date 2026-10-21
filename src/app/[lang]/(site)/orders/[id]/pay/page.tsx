@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { localePath } from "@/i18n/config";
+import { getLocale, getT } from "@/i18n/server";
 import { baht } from "@/lib/format";
 import { loadOrder } from "@/lib/orders";
 import { PayPanel } from "./pay-panel";
 
-export const metadata: Metadata = { title: "ชำระเงิน" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t.checkout.pay.title };
+}
 
 export default function PayPage({ params }: PageProps<"/[lang]/orders/[id]/pay">) {
   return (
@@ -21,21 +26,25 @@ export default function PayPage({ params }: PageProps<"/[lang]/orders/[id]/pay">
 
 async function Pay({ params }: Pick<PageProps<"/[lang]/orders/[id]/pay">, "params">) {
   const { id } = await params;
+  const locale = await getLocale();
+  const t = (await getT()).checkout.pay;
   const order = await loadOrder(id, `/orders/${id}/pay`);
-  if (order.status === "paid") redirect(`/orders/${id}/success`);
+  if (order.status === "paid") redirect(localePath(locale, `/orders/${id}/success`));
 
   const lines = order.items.filter((i) => i.type !== "fee" && i.totalSatang + i.discountSatang > 0);
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-[20px] bg-white px-4 py-3">
-        <div className="font-semibold">ชำระเงิน · {order.event.name}</div>
+        <div className="font-semibold">
+          {t.title} · {order.event.name}
+        </div>
         <div className="text-[13px] text-muted">
           {order.purpose.kind === "race_change"
-            ? `เปลี่ยนเป็น ${order.purpose.raceCode}`
+            ? t.changeTo(order.purpose.raceCode)
             : order.purpose.kind === "transfer"
-              ? `รับโอนสิทธิ์ ${order.purpose.raceCode}`
-              : "ขั้น 3 จาก 3"}{" "}
-          · คำสั่งซื้อ {order.orderNo}
+              ? t.transfer(order.purpose.raceCode)
+              : t.step}{" "}
+          · {t.orderNo(order.orderNo)}
         </div>
       </div>
 
@@ -48,18 +57,18 @@ async function Pay({ params }: Pick<PageProps<"/[lang]/orders/[id]/pay">, "param
         ))}
         {order.discountSatang > 0 && (
           <div className="flex justify-between text-ok">
-            <span>ส่วนลด</span>
+            <span>{t.discount}</span>
             <span>−{baht(order.discountSatang)}</span>
           </div>
         )}
         {order.feeSatang > 0 && (
           <div className="flex justify-between text-muted">
-            <span>ค่าธรรมเนียมชำระเงิน</span>
+            <span>{t.fee}</span>
             <span>{baht(order.feeSatang)}</span>
           </div>
         )}
         <div className="mt-1 flex items-baseline justify-between border-t border-dashed border-line-strong pt-2">
-          <b className="font-semibold">ยอดชำระ</b>
+          <b className="font-semibold">{t.total}</b>
           <b className="text-2xl">{baht(order.totalSatang)}</b>
         </div>
       </section>
@@ -74,8 +83,8 @@ async function Pay({ params }: Pick<PageProps<"/[lang]/orders/[id]/pay">, "param
         />
       ) : (
         <div className="rounded-card bg-white p-6">
-          <h2 className="text-xl font-bold">คำสั่งซื้อนี้ชำระเงินไม่ได้แล้ว</h2>
-          <p className="text-muted">สถานะ: {order.status}</p>
+          <h2 className="text-xl font-bold">{t.notPayable}</h2>
+          <p className="text-muted">{t.status(order.status)}</p>
         </div>
       )}
     </div>

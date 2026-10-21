@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { buttonClass } from "@/components/ui";
+import { localePath } from "@/i18n/config";
+import Link from "@/i18n/link";
+import { getLocale, getT } from "@/i18n/server";
 import { baht } from "@/lib/format";
 import { loadOrder } from "@/lib/orders";
 import type { Order } from "@/lib/types";
 
-export const metadata: Metadata = { title: "ชำระเงินสำเร็จ" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t.checkout.success.title };
+}
 
 export default function SuccessPage({ params }: PageProps<"/[lang]/orders/[id]/success">) {
   return (
@@ -23,9 +28,12 @@ export default function SuccessPage({ params }: PageProps<"/[lang]/orders/[id]/s
 
 async function Success({ params }: Pick<PageProps<"/[lang]/orders/[id]/success">, "params">) {
   const { id } = await params;
+  const locale = await getLocale();
+  const t = await getT();
   const order = await loadOrder(id, `/orders/${id}/success`);
-  if (order.status === "pending_payment") redirect(`/orders/${id}/pay`);
+  if (order.status === "pending_payment") redirect(localePath(locale, `/orders/${id}/pay`));
   if (order.purpose.kind !== "registration") return <ChangePaid order={order} purpose={order.purpose} />;
+  const s = t.checkout.success;
 
   return (
     <div className="flex flex-col items-center gap-5 text-center">
@@ -33,57 +41,59 @@ async function Success({ params }: Pick<PageProps<"/[lang]/orders/[id]/success">
         ✓
       </span>
       <div>
-        <h1 className="text-3xl font-bold">ชำระเงินสำเร็จ</h1>
+        <h1 className="text-3xl font-bold">{s.title}</h1>
         <p className="mt-1 text-muted">
-          คำสั่งซื้อ {order.orderNo} · {baht(order.totalSatang)}
+          {t.checkout.pay.orderNo(order.orderNo)} · {baht(order.totalSatang)}
         </p>
       </div>
       <div className="flex w-full flex-col gap-2.5">
         {order.registrations.map((r) => (
           <div key={r.id} className="flex items-center gap-4 rounded-card bg-white px-5 py-4 text-left">
-            <span className="rounded-2xl bg-ice px-3 py-1.5 text-2xl font-bold text-brand tabular-nums">{r.bibNumber ?? "รอออก"}</span>
+            <span className="rounded-2xl bg-ice px-3 py-1.5 text-2xl font-bold text-brand tabular-nums">{r.bibNumber ?? s.bibPending}</span>
             <span className="flex-1 leading-snug">
-              <b className="font-semibold">{r.name.th ?? r.name.en}</b>
+              <b className="font-semibold">{locale === "en" ? r.name.en : (r.name.th ?? r.name.en)}</b>
               <br />
               <span className="text-sm text-muted">
                 {r.raceCode}
-                {r.shirtSize ? ` · เสื้อ ${r.shirtSize}` : ""}
+                {r.shirtSize ? s.shirt(r.shirtSize) : ""}
               </span>
             </span>
           </div>
         ))}
       </div>
       <Link href="/me/events" className={`${buttonClass} w-full no-underline`}>
-        ดูบัตรวิ่ง
+        {s.viewTicket}
       </Link>
-      <p className="text-sm text-muted">เราส่งใบเสร็จไปที่อีเมลของผู้ชำระเงินแล้ว</p>
+      <p className="text-sm text-muted">{s.receipt}</p>
     </div>
   );
 }
 
 /** A paid race change or transfer fee: the place has moved, or (rarely) could not and the money goes back. */
-function ChangePaid({ order, purpose }: { order: Order; purpose: Extract<Order["purpose"], { kind: "race_change" | "transfer" }> }) {
+async function ChangePaid({ order, purpose }: { order: Order; purpose: Extract<Order["purpose"], { kind: "race_change" | "transfer" }> }) {
+  const t = await getT();
+  const s = t.checkout.success;
   const done = purpose.status === "completed";
-  const title = purpose.kind === "race_change" ? `เปลี่ยนเป็น ${purpose.raceCode} แล้ว` : `รับโอนสิทธิ์ ${purpose.raceCode} แล้ว`;
+  const title = purpose.kind === "race_change" ? s.changed(purpose.raceCode) : s.transferred(purpose.raceCode);
   return (
     <div className="flex flex-col items-center gap-5 text-center">
       <span aria-hidden className={`grid h-20 w-20 place-items-center rounded-full text-4xl ${done ? "bg-ok-soft text-ok" : "bg-warn-soft text-warn"}`}>
         {done ? "✓" : "!"}
       </span>
       <div>
-        <h1 className="text-3xl font-bold">{done ? title : "ชำระเงินแล้ว แต่เปลี่ยนสิทธิ์ไม่สำเร็จ"}</h1>
+        <h1 className="text-3xl font-bold">{done ? title : s.changeFailed}</h1>
         <p className="mt-1 text-muted">
-          คำสั่งซื้อ {order.orderNo} · {baht(order.totalSatang)}
+          {t.checkout.pay.orderNo(order.orderNo)} · {baht(order.totalSatang)}
         </p>
-        {!done && <p className="mt-2 text-sm text-muted">สิทธิ์นี้เปลี่ยนไม่ได้แล้ว เราจะคืนเงินที่ชำระเข้ามาให้</p>}
+        {!done && <p className="mt-2 text-sm text-muted">{s.changeFailedText}</p>}
       </div>
       {done && purpose.registrationId ? (
         <Link href={`/me/registrations/${purpose.registrationId}${purpose.kind === "race_change" ? "?changed=1" : ""}`} className={`${buttonClass} w-full no-underline`}>
-          ดูบัตรวิ่ง
+          {s.viewTicket}
         </Link>
       ) : (
         <Link href="/me/events" className={`${buttonClass} w-full no-underline`}>
-          ไปที่งานของฉัน
+          {s.myEvents}
         </Link>
       )}
     </div>

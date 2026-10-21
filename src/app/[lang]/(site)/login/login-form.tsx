@@ -3,14 +3,16 @@
 import { useActionState } from "react";
 import { login, type FormState } from "@/app/actions";
 import { buttonClass, ErrorNote, inputClass } from "@/components/ui";
+import { useT } from "@/i18n/client";
 
 export function LoginForm({ next }: { next: string }) {
+  const t = useT().checkout.login;
   const [state, formAction, pending] = useActionState<FormState, FormData>(login, {});
   return (
     <form action={formAction} className="flex flex-col gap-3">
       <input type="hidden" name="next" value={next} />
       <label className="flex flex-col gap-1">
-        <span className="text-[13px] text-muted">อีเมล</span>
+        <span className="text-[13px] text-muted">{t.email}</span>
         <input
           name="email"
           type="email"
@@ -24,7 +26,7 @@ export function LoginForm({ next }: { next: string }) {
       </label>
       <ErrorNote message={state.error} />
       <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? "กำลังเข้าสู่ระบบ…" : "เข้าสู่ระบบ"}
+        {pending ? t.pending : t.submit}
       </button>
     </form>
   );

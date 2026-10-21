@@ -1,10 +1,19 @@
-import Link from "next/link";
-import { baht, fmt, provinceName } from "@/lib/format";
+import { localized, type Locale } from "@/i18n/config";
+import Link from "@/i18n/link";
+import { getLocale, getT } from "@/i18n/server";
+import { baht, fmtFor, provinceName } from "@/lib/format";
 import type { EventSummary, ResultsEvent } from "@/lib/types";
 import { EventBanner } from "./banner";
 import { AvailabilityPill, Chip, DateBlock } from "./ui";
 
-export function EventCard({ event }: { event: EventSummary }) {
+/** The banner shows the name in the other language (Thai pages have long shown the English one), the heading the page's. */
+function bannerTitle(locale: Locale, name: { th: string; en: string | null }): string {
+  return localized(locale === "th" ? "en" : "th", name);
+}
+
+export async function EventCard({ event }: { event: EventSummary }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()]);
+  const f = fmtFor(locale);
   return (
     <Link
       href={`/events/${event.slug}`}
@@ -13,19 +22,19 @@ export function EventCard({ event }: { event: EventSummary }) {
       <EventBanner
         slug={event.slug}
         type={event.type}
-        title={event.name.en ?? event.name.th}
-        subtitle={provinceName(event.province) ?? undefined}
+        title={bannerTitle(locale, event.name)}
+        subtitle={provinceName(event.province, locale) ?? undefined}
         imageUrl={event.coverImageUrl}
         className="h-44 rounded-[18px]"
         titleSize="text-lg"
       >
         <AvailabilityPill value={event.availability} className="absolute right-3 top-3" />
-        <DateBlock day={fmt.dayOfMonth(event.eventDate)} month={fmt.monthShort(event.eventDate)} className="absolute bottom-3 left-3" />
+        <DateBlock day={f.dayOfMonth(event.eventDate)} month={f.monthShort(event.eventDate)} className="absolute bottom-3 left-3" />
       </EventBanner>
       <div className="mt-2 flex flex-1 flex-col gap-2.5 rounded-[18px] bg-white px-3.5 pb-3.5 pt-4">
-        <h3 className="text-[19px] font-semibold leading-snug">{event.name.th}</h3>
+        <h3 className="text-[19px] font-semibold leading-snug">{localized(locale, event.name)}</h3>
         <span className="text-sm text-muted">
-          {[event.venue, fmt.date(event.eventDate)].filter(Boolean).join(" · ")}
+          {[event.venue, f.date(event.eventDate)].filter(Boolean).join(" · ")}
         </span>
         <div className="flex flex-wrap gap-1.5">
           {event.races.map((r) => (
@@ -36,10 +45,10 @@ export function EventCard({ event }: { event: EventSummary }) {
           <span className="text-sm text-muted">
             {event.fromPriceSatang !== null ? (
               <>
-                เริ่ม <b className="text-xl text-ink">{baht(event.fromPriceSatang)}</b>
+                {t.events.card.from} <b className="text-xl text-ink">{baht(event.fromPriceSatang)}</b>
               </>
             ) : (
-              "ยังไม่เปิดขาย"
+              t.events.card.notOnSale
             )}
           </span>
           <span aria-hidden className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white transition group-hover:bg-brand-dark">
@@ -52,7 +61,10 @@ export function EventCard({ event }: { event: EventSummary }) {
 }
 
 /** An event in the results index: links to its results, with finishers per race instead of prices. */
-export function ResultsEventCard({ event }: { event: ResultsEvent }) {
+export async function ResultsEventCard({ event }: { event: ResultsEvent }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()]);
+  const f = fmtFor(locale);
+  const finishers = t.events.card.finishers;
   return (
     <Link
       href={`/events/${event.slug}/results`}
@@ -61,29 +73,30 @@ export function ResultsEventCard({ event }: { event: ResultsEvent }) {
       <EventBanner
         slug={event.slug}
         type={event.type}
-        title={event.name.en ?? event.name.th}
-        subtitle={provinceName(event.province) ?? undefined}
+        title={bannerTitle(locale, event.name)}
+        subtitle={provinceName(event.province, locale) ?? undefined}
         imageUrl={event.coverImageUrl}
         className="h-36 rounded-[18px]"
         titleSize="text-lg"
       >
-        <DateBlock day={fmt.dayOfMonth(event.eventDate)} month={fmt.monthShort(event.eventDate)} className="absolute bottom-3 left-3" />
+        <DateBlock day={f.dayOfMonth(event.eventDate)} month={f.monthShort(event.eventDate)} className="absolute bottom-3 left-3" />
       </EventBanner>
       <div className="mt-2 flex flex-1 flex-col gap-2.5 rounded-[18px] bg-white px-3.5 pb-3.5 pt-4">
-        <h3 className="text-[19px] font-semibold leading-snug">{event.name.th}</h3>
+        <h3 className="text-[19px] font-semibold leading-snug">{localized(locale, event.name)}</h3>
         <span className="text-sm text-muted">
-          {[event.venue, fmt.date(event.eventDate)].filter(Boolean).join(" · ")}
+          {[event.venue, f.date(event.eventDate)].filter(Boolean).join(" · ")}
         </span>
         <div className="flex flex-wrap gap-1.5">
           {event.races.map((r) => (
             <Chip key={r.id}>
-              {r.code} <span className="font-normal">· {r.finishers.toLocaleString("th-TH")}</span>
+              {r.code} <span className="font-normal">· {f.num(r.finishers)}</span>
             </Chip>
           ))}
         </div>
         <div className="mt-auto flex items-center justify-between pt-1">
           <span className="text-sm text-muted">
-            เข้าเส้นชัย <b className="text-xl text-ink">{event.finishers.toLocaleString("th-TH")}</b> คน
+            {finishers.before && `${finishers.before} `}
+            <b className="text-xl text-ink">{f.num(event.finishers)}</b> {event.finishers === 1 ? finishers.one : finishers.many}
           </span>
           <span aria-hidden className="grid h-10 w-10 place-items-center rounded-full bg-brand text-white transition group-hover:bg-brand-dark">
             →

@@ -3,12 +3,14 @@
 import { useActionState, useState } from "react";
 import { joinWaitlist, startCheckout, type FormState } from "@/app/actions";
 import { buttonClass, ErrorNote } from "@/components/ui";
+import { useT } from "@/i18n/client";
 import { baht } from "@/lib/format";
 import type { RaceDetail } from "@/lib/types";
 
 const MAX_RUNNERS = 10;
 
 export function RacePicker({ eventId, slug, races, waitlist }: { eventId: string; slug: string; races: RaceDetail[]; waitlist: boolean }) {
+  const t = useT().events.picker;
   const firstOpen = races.find((r) => r.available > 0 && r.priceSatang !== null);
   const [qty, setQty] = useState<Record<string, number>>(firstOpen ? { [firstOpen.id]: 1 } : {});
   const [state, formAction, pending] = useActionState<FormState, FormData>(startCheckout, {});
@@ -42,7 +44,7 @@ export function RacePicker({ eventId, slug, races, waitlist }: { eventId: string
             </div>
             <div className="flex items-center justify-between gap-3">
               <span className={`text-[13px] font-medium ${soldOut ? "text-bad" : r.availability === "almost_full" ? "text-warn" : "text-muted"}`}>
-                {soldOut ? "เต็มแล้ว" : `เหลือ ${r.available.toLocaleString()} ที่`}
+                {soldOut ? t.full : t.left(r.available)}
               </span>
               {soldOut && waitlist && r.availability !== "closed" && r.availability !== "not_open" && (
                 <button
@@ -55,14 +57,14 @@ export function RacePicker({ eventId, slug, races, waitlist }: { eventId: string
                   disabled={waiting}
                   className="min-h-11 rounded-full bg-white px-4 text-sm font-semibold text-brand ring-1 ring-line-strong"
                 >
-                  {waiting ? "…" : `เข้าคิว waitlist ${r.code}`}
+                  {waiting ? "…" : t.joinWaitlist(r.code)}
                 </button>
               )}
               {!soldOut && (
-                <div className="flex items-center gap-1" role="group" aria-label={`จำนวนผู้วิ่ง ${r.code}`}>
+                <div className="flex items-center gap-1" role="group" aria-label={t.runners(r.code)}>
                   <button
                     type="button"
-                    aria-label={`ลดจำนวน ${r.code}`}
+                    aria-label={t.fewer(r.code)}
                     disabled={n === 0}
                     onClick={() => set(r.id, n - 1)}
                     className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl text-brand ring-1 ring-line-strong disabled:opacity-40"
@@ -74,7 +76,7 @@ export function RacePicker({ eventId, slug, races, waitlist }: { eventId: string
                   </span>
                   <button
                     type="button"
-                    aria-label={`เพิ่มจำนวน ${r.code}`}
+                    aria-label={t.more(r.code)}
                     disabled={n >= maxHere}
                     onClick={() => set(r.id, n + 1)}
                     className="grid h-11 w-11 place-items-center rounded-full bg-white text-xl text-brand ring-1 ring-line-strong disabled:opacity-40"
@@ -89,9 +91,9 @@ export function RacePicker({ eventId, slug, races, waitlist }: { eventId: string
       })}
       <ErrorNote message={state.error ?? waitState.error} />
       <button type="submit" disabled={runners === 0 || pending} className={`${buttonClass} min-h-14 rounded-[18px] text-[17px]`}>
-        {pending ? "กำลังจองที่…" : runners === 0 ? "เลือกระยะก่อน" : `สมัคร ${runners} คน · ${baht(total)}`}
+        {pending ? t.holding : runners === 0 ? t.chooseFirst : t.register(runners, baht(total))}
       </button>
-      <p className="text-center text-[13px] text-muted">กดสมัครแล้วระบบจะจองที่ไว้ให้ 15 นาทีระหว่างกรอกข้อมูล</p>
+      <p className="text-center text-[13px] text-muted">{t.holdNote}</p>
     </form>
   );
 }

@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { cancelCheckout } from "@/app/actions";
+import { localePath, localized } from "@/i18n/config";
+import Link from "@/i18n/link";
+import { getLocale, getT } from "@/i18n/server";
 import { api, apiOrThrow } from "@/lib/api";
 import type { CheckoutSession, EventDetail, RunnerProfile } from "@/lib/types";
 import { CheckoutForm, type SizeOption, type Slot } from "./checkout-form";
 
-export const metadata: Metadata = { title: "กรอกข้อมูลผู้วิ่ง" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t.checkout.page.title };
+}
 
 export default function CheckoutPage({ params }: PageProps<"/[lang]/checkout/[id]">) {
   return (
@@ -23,9 +28,11 @@ export default function CheckoutPage({ params }: PageProps<"/[lang]/checkout/[id
 
 async function Checkout({ params }: Pick<PageProps<"/[lang]/checkout/[id]">, "params">) {
   const { id } = await params;
+  const locale = await getLocale();
+  const t = (await getT()).checkout.page;
   const res = await api<CheckoutSession>(`/v1/checkout/sessions/${encodeURIComponent(id)}`, { auth: true });
   if (!res.ok) {
-    if (res.status === 401) redirect(`/login?next=/checkout/${id}`);
+    if (res.status === 401) redirect(localePath(locale, `/login?next=/checkout/${id}`));
     notFound();
   }
   const session = res.data;
@@ -37,14 +44,12 @@ async function Checkout({ params }: Pick<PageProps<"/[lang]/checkout/[id]">, "pa
   if (session.status !== "active") {
     return (
       <div className="flex flex-col items-start gap-4 rounded-card bg-white p-6">
-        <h1 className="text-2xl font-bold">{session.status === "converted" ? "ชำระเงินเรียบร้อยแล้ว" : "หมดเวลาจองที่แล้ว"}</h1>
+        <h1 className="text-2xl font-bold">{session.status === "converted" ? t.paidTitle : t.expiredTitle}</h1>
         <p className="text-muted">
-          {session.status === "converted"
-            ? "ดูบัตรวิ่งได้ที่หน้างานของฉัน"
-            : "ที่ที่จองไว้ถูกคืนให้คนอื่นแล้ว กลับไปเลือกระยะเพื่อเช็กที่ว่างอีกครั้ง"}
+          {session.status === "converted" ? t.paidText : t.expiredText}
         </p>
         <Link href={session.status === "converted" ? "/me/events" : `/events/${event.slug}`} className="font-semibold">
-          {session.status === "converted" ? "ไปที่งานของฉัน" : "กลับไปหน้างาน"}
+          {session.status === "converted" ? t.paidLink : t.expiredLink}
         </Link>
       </div>
     );
@@ -65,7 +70,7 @@ async function Checkout({ params }: Pick<PageProps<"/[lang]/checkout/[id]">, "pa
     <div className="flex flex-col gap-3">
       <CheckoutForm
         sessionId={session.id}
-        eventName={event.name.th}
+        eventName={localized(locale, event.name)}
         expiresAt={session.expiresAt}
         slots={slots}
         sizes={sizes}
@@ -74,7 +79,7 @@ async function Checkout({ params }: Pick<PageProps<"/[lang]/checkout/[id]">, "pa
       />
       <form action={cancelCheckout.bind(null, session.id, event.slug)} className="self-center">
         <button type="submit" className="px-4 py-2 text-sm text-muted underline hover:text-ink">
-          ยกเลิกและคืนที่ที่จองไว้
+          {t.cancel}
         </button>
       </form>
     </div>

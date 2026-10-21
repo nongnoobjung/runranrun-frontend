@@ -1,25 +1,31 @@
 import type { Metadata } from "next";
 import Form from "next/form";
-import Link from "next/link";
 import { Suspense } from "react";
 import { ResultsEventCard } from "@/components/event-card";
 import { buttonClass, inputClass } from "@/components/ui";
+import { localePath } from "@/i18n/config";
+import Link from "@/i18n/link";
+import { getLocale, getT } from "@/i18n/server";
 import { api, apiOrThrow } from "@/lib/api";
-import { duration, fmt, pace, RESULT_STATUS_TH } from "@/lib/format";
+import { duration, fmtFor, pace, RESULT_STATUS } from "@/lib/format";
 import type { ResultsEvent, RunnerResult } from "@/lib/types";
 
-export const metadata: Metadata = { title: "ผลการแข่งขัน" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t.events.resultsIndex.title };
+}
 
 type Props = PageProps<"/[lang]/results">;
 
 const PAGE_SIZE = 12;
 
-export default function ResultsIndexPage({ searchParams }: Props) {
+export default async function ResultsIndexPage({ searchParams }: Props) {
+  const t = await getT();
   return (
     <div className="mx-auto flex max-w-[1240px] flex-col gap-5 px-4 py-8 sm:px-7">
       <div>
-        <h1 className="text-3xl font-bold sm:text-4xl">ผลการแข่งขัน</h1>
-        <p className="mt-1 text-muted">ผลของทุกงานที่ผู้จัดเผยแพร่แล้ว ค้นหาตัวเองด้วยชื่อหรือเลขบิบ</p>
+        <h1 className="text-3xl font-bold sm:text-4xl">{t.events.resultsIndex.title}</h1>
+        <p className="mt-1 text-muted">{t.events.resultsIndex.intro}</p>
       </div>
       <Suspense fallback={<div className="h-96 animate-pulse rounded-card bg-tint" aria-busy="true" />}>
         <ResultsIndex searchParams={searchParams} />
@@ -30,18 +36,20 @@ export default function ResultsIndexPage({ searchParams }: Props) {
 
 async function ResultsIndex({ searchParams }: Pick<Props, "searchParams">) {
   const sp = await searchParams;
+  const [t, locale] = await Promise.all([getT(), getLocale()]);
+  const ri = t.events.resultsIndex;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
   const q = one(sp.q).trim();
   const page = Math.max(1, Number(one(sp.page)) || 1);
 
   const form = (
-    <Form action="/results" role="search" className="flex gap-2 rounded-card bg-tint p-4 sm:p-5">
+    <Form action={localePath(locale, "/results")} role="search" className="flex gap-2 rounded-card bg-tint p-4 sm:p-5">
       <label className="min-w-0 flex-1">
-        <span className="sr-only">ชื่อนักวิ่ง เลขบิบ หรือชื่องาน</span>
-        <input name="q" type="search" defaultValue={q} placeholder="ชื่อนักวิ่ง เลขบิบ หรือชื่องาน" className={inputClass} />
+        <span className="sr-only">{ri.query}</span>
+        <input name="q" type="search" defaultValue={q} placeholder={ri.query} className={inputClass} />
       </label>
       <button type="submit" className={`${buttonClass} px-5`}>
-        ค้นหา
+        {t.events.search}
       </button>
     </Form>
   );
@@ -51,7 +59,7 @@ async function ResultsIndex({ searchParams }: Pick<Props, "searchParams">) {
       <>
         {form}
         <Link href="/results" className="self-start text-sm font-semibold">
-          ← ดูงานทั้งหมด
+          ← {ri.allEvents}
         </Link>
         <SearchResults q={q} />
       </>
@@ -71,33 +79,33 @@ async function ResultsIndex({ searchParams }: Pick<Props, "searchParams">) {
           <MyResults />
         </Suspense>
       )}
-      <h2 className="text-xl font-bold">งานที่ประกาศผลแล้ว</h2>
+      <h2 className="text-xl font-bold">{ri.published}</h2>
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-card bg-tint p-10 text-center">
-          <p className="font-semibold">ยังไม่มีงานที่ประกาศผล</p>
-          <p className="text-sm text-muted">ผลจะขึ้นที่นี่หลังผู้จัดเผยแพร่</p>
+          <p className="font-semibold">{ri.noneYet}</p>
+          <p className="text-sm text-muted">{ri.noneYetHint}</p>
         </div>
       ) : (
-        <EventGrid events={items} label="งานที่ประกาศผลแล้ว" />
+        <EventGrid events={items} label={ri.published} />
       )}
       {pages > 1 && (
-        <nav aria-label="หน้า" className="flex items-center justify-center gap-3">
+        <nav aria-label={t.events.pager.label} className="flex items-center justify-center gap-3">
           {page > 1 ? (
             <Link href={pageHref(page - 1)} className="rounded-full bg-ice px-4 py-2 text-sm font-semibold no-underline" rel="prev">
-              ← ก่อนหน้า
+              ← {t.events.pager.prev}
             </Link>
           ) : (
-            <span className="rounded-full px-4 py-2 text-sm text-muted">← ก่อนหน้า</span>
+            <span className="rounded-full px-4 py-2 text-sm text-muted">← {t.events.pager.prev}</span>
           )}
           <span className="text-sm tabular-nums">
             {page} / {pages}
           </span>
           {page < pages ? (
             <Link href={pageHref(page + 1)} className="rounded-full bg-ice px-4 py-2 text-sm font-semibold no-underline" rel="next">
-              ถัดไป →
+              {t.events.pager.next} →
             </Link>
           ) : (
-            <span className="rounded-full px-4 py-2 text-sm text-muted">ถัดไป →</span>
+            <span className="rounded-full px-4 py-2 text-sm text-muted">{t.events.pager.next} →</span>
           )}
         </nav>
       )}
@@ -107,7 +115,8 @@ async function ResultsIndex({ searchParams }: Pick<Props, "searchParams">) {
 
 /** One box finds both runners (name or bib) and events (name). */
 async function SearchResults({ q }: { q: string }) {
-  if (q.length < 2) return <p className="rounded-card bg-tint p-6 text-muted">พิมพ์อย่างน้อย 2 ตัวอักษร</p>;
+  const ri = (await getT()).events.resultsIndex;
+  if (q.length < 2) return <p className="rounded-card bg-tint p-6 text-muted">{ri.minChars}</p>;
   const [runners, events] = await Promise.all([
     apiOrThrow<{ items: RunnerResult[]; hasMore: boolean }>(`/v1/results/search?${new URLSearchParams({ q })}`),
     apiOrThrow<{ items: ResultsEvent[]; total: number }>(`/v1/results?${new URLSearchParams({ q, limit: String(PAGE_SIZE) })}`),
@@ -115,8 +124,8 @@ async function SearchResults({ q }: { q: string }) {
   if (runners.items.length === 0 && events.items.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-card bg-tint p-10 text-center">
-        <p className="font-semibold">ไม่พบผลของ “{q}”</p>
-        <p className="text-sm text-muted">ลองค้นด้วยชื่อจริงภาษาไทยหรือเลขบิบเต็ม ผลจะขึ้นหลังผู้จัดเผยแพร่เท่านั้น</p>
+        <p className="font-semibold">{ri.notFound(q)}</p>
+        <p className="text-sm text-muted">{ri.notFoundHint}</p>
       </div>
     );
   }
@@ -125,18 +134,18 @@ async function SearchResults({ q }: { q: string }) {
       {runners.items.length > 0 && (
         <section aria-labelledby="found-runners" className="flex flex-col gap-2">
           <h2 id="found-runners" className="text-xl font-bold">
-            นักวิ่ง
+            {ri.runners}
           </h2>
-          <RunnerList items={runners.items} label="นักวิ่งที่ค้นพบ" />
-          {runners.hasMore && <p className="text-sm text-muted">แสดงเฉพาะรายการแรก ๆ พิมพ์ชื่อเต็มหรือเลขบิบเพื่อให้แคบลง</p>}
+          <RunnerList items={runners.items} label={ri.runnersFound} />
+          {runners.hasMore && <p className="text-sm text-muted">{ri.hasMore}</p>}
         </section>
       )}
       {events.items.length > 0 && (
         <section aria-labelledby="found-events" className="flex flex-col gap-3">
           <h2 id="found-events" className="text-xl font-bold">
-            งาน
+            {ri.events}
           </h2>
-          <EventGrid events={events.items} label="งานที่ค้นพบ" />
+          <EventGrid events={events.items} label={ri.eventsFound} />
         </section>
       )}
     </>
@@ -145,14 +154,15 @@ async function SearchResults({ q }: { q: string }) {
 
 /** The signed-in runner's own results; nothing at all for guests or runners without one. */
 async function MyResults() {
+  const t = await getT();
   const res = await api<{ items: RunnerResult[] }>("/v1/me/results", { auth: true });
   if (!res.ok || res.data.items.length === 0) return null;
   return (
     <section aria-labelledby="my-results" className="flex flex-col gap-2">
       <h2 id="my-results" className="text-xl font-bold">
-        ผลของฉัน
+        {t.events.resultsIndex.mine}
       </h2>
-      <RunnerList items={res.data.items} label="ผลของฉัน" />
+      <RunnerList items={res.data.items} label={t.events.resultsIndex.mine} />
     </section>
   );
 }
@@ -169,7 +179,9 @@ function EventGrid({ events, label }: { events: ResultsEvent[]; label: string })
   );
 }
 
-function RunnerList({ items, label }: { items: RunnerResult[]; label: string }) {
+async function RunnerList({ items, label }: { items: RunnerResult[]; label: string }) {
+  const [t, locale] = await Promise.all([getT(), getLocale()]);
+  const f = fmtFor(locale);
   return (
     <ol aria-label={label} className="flex flex-col rounded-card bg-tint p-2">
       {items.map((x) => (
@@ -182,7 +194,7 @@ function RunnerList({ items, label }: { items: RunnerResult[]; label: string }) 
               className={`grid h-11 w-11 flex-none place-items-center rounded-full text-sm font-bold tabular-nums ${
                 x.status !== "FIN" ? "bg-white text-muted" : x.rankOverall && x.rankOverall <= 3 ? "bg-sky text-ink" : "bg-ice text-brand"
               }`}
-              aria-label={x.status === "FIN" ? `อันดับ ${x.rankOverall}` : RESULT_STATUS_TH[x.status]}
+              aria-label={x.status === "FIN" ? t.events.rank(x.rankOverall) : RESULT_STATUS[locale][x.status]}
             >
               {x.status === "FIN" ? x.rankOverall : x.status}
             </span>
@@ -192,17 +204,17 @@ function RunnerList({ items, label }: { items: RunnerResult[]; label: string }) 
                 {x.event.name} · {x.race.code}
               </span>
               <span className="text-[13px] text-muted">
-                {fmt.date(x.event.eventDate)} · บิบ {x.bib}
+                {f.date(x.event.eventDate)} · {t.events.bib(x.bib)}
               </span>
             </span>
             <span className="flex flex-none flex-col items-end leading-snug">
               {x.status === "FIN" ? (
                 <>
                   <b className="text-lg font-bold tabular-nums">{duration(x.chipTimeMs ?? x.gunTimeMs)}</b>
-                  <span className="text-xs text-muted">{pace(x.paceSecPerKm)}</span>
+                  <span className="text-xs text-muted">{pace(x.paceSecPerKm, locale)}</span>
                 </>
               ) : (
-                <span className="text-sm text-muted">{RESULT_STATUS_TH[x.status]}</span>
+                <span className="text-sm text-muted">{RESULT_STATUS[locale][x.status]}</span>
               )}
             </span>
           </Link>

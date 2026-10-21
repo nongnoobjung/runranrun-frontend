@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EventBanner } from "@/components/banner";
 import { AvailabilityPill, Chip } from "@/components/ui";
+import { localized } from "@/i18n/config";
+import Link from "@/i18n/link";
+import { getLocale, getT } from "@/i18n/server";
 import { api } from "@/lib/api";
-import { baht, fmt } from "@/lib/format";
+import { baht, fmtFor } from "@/lib/format";
 import type { EventDetail } from "@/lib/types";
 import { RacePicker } from "./race-picker";
 
@@ -20,8 +22,8 @@ async function loadEvent(slug: string): Promise<EventDetail> {
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/events/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const res = await api<EventDetail>(`/v1/events/${encodeURIComponent(slug)}`);
-  return res.ok ? { title: res.data.name.th, description: res.data.summary ?? undefined } : {};
+  const [res, locale] = await Promise.all([api<EventDetail>(`/v1/events/${encodeURIComponent(slug)}`), getLocale()]);
+  return res.ok ? { title: localized(locale, res.data.name), description: res.data.summary ?? undefined } : {};
 }
 
 export default function EventPage({ params }: PageProps<"/[lang]/events/[slug]">) {
@@ -34,7 +36,9 @@ export default function EventPage({ params }: PageProps<"/[lang]/events/[slug]">
 
 async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">, "params">) {
   const { slug } = await params;
-  const e = await loadEvent(slug);
+  const [e, t, locale] = await Promise.all([loadEvent(slug), getT(), getLocale()]);
+  const p = t.events.page;
+  const fmt = fmtFor(locale);
   const shirt = e.products.find((p) => p.type === "shirt");
   const best = e.races.filter((r) => r.priceSatang !== null);
   const totalLeft = e.races.reduce((s, r) => s + r.available, 0);
@@ -52,9 +56,9 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
           <div className="absolute inset-x-6 bottom-8 flex flex-col gap-3 text-white sm:inset-x-12 sm:bottom-10">
             <div className="flex flex-wrap gap-2">
               {e.races.some((r) => r.availability === "almost_full") && <AvailabilityPill value="almost_full" />}
-              <span className="rounded-full bg-white/20 px-3.5 py-1 text-sm">{typeLabel(e.type)}</span>
+              <span className="rounded-full bg-white/20 px-3.5 py-1 text-sm">{t.events.types[e.type]}</span>
             </div>
-            <h1 className="text-4xl font-bold leading-tight drop-shadow sm:text-[56px]">{e.name.th}</h1>
+            <h1 className="text-4xl font-bold leading-tight drop-shadow sm:text-[56px]">{localized(locale, e.name)}</h1>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-[17px] text-white/90">
               <span>
                 {fmt.weekday(e.eventDate)} {fmt.date(e.eventDate)}
@@ -63,7 +67,7 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
             </div>
             {e.resultsPublishedAt && (
               <Link href={`/events/${e.slug}/results`} className="self-start rounded-full bg-white px-5 py-2.5 font-semibold text-ink no-underline">
-                ดูผลการแข่งขัน →
+                {p.seeResults}
               </Link>
             )}
           </div>
@@ -72,35 +76,35 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
 
       <div className="mx-auto flex max-w-[1240px] flex-wrap items-start gap-10 px-4 pt-10 sm:px-7">
         <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-10">
-          <section aria-label="ข้อมูลสำคัญ" className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
-            <Fact label="วันแข่ง" value={fmt.date(e.eventDate)} sub={fmt.weekday(e.eventDate)} />
-            <Fact label="ระยะ" value={e.races.map((r) => r.code).join(" · ")} sub={`${e.races.length} ระยะ`} />
+          <section aria-label={p.factsLabel} className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+            <Fact label={p.raceDay} value={fmt.date(e.eventDate)} sub={fmt.weekday(e.eventDate)} />
+            <Fact label={p.races} value={e.races.map((r) => r.code).join(" · ")} sub={p.raceCount(e.races.length)} />
             <Fact
-              label="ปิดรับสมัคร"
-              value={e.registration.closesAt ? fmt.date(e.registration.closesAt) : "เมื่อเต็ม"}
-              sub="หรือเมื่อเต็ม"
+              label={p.closes}
+              value={e.registration.closesAt ? fmt.date(e.registration.closesAt) : p.whenFull}
+              sub={p.orWhenFull}
             />
-            <Fact label="ที่ว่างรวม" value={`${totalLeft.toLocaleString()} ที่`} sub="อัปเดตทุกครั้งที่เปิดหน้า" />
+            <Fact label={p.placesLeft} value={p.places(totalLeft)} sub={p.placesNote} />
           </section>
 
           {(e.summary || e.description) && (
             <section className="flex flex-col gap-2.5">
-              <h2 className="text-[26px] font-bold">เกี่ยวกับงาน</h2>
+              <h2 className="text-[26px] font-bold">{p.about}</h2>
               {e.summary && <p className="max-w-[700px] text-ink/85">{e.summary}</p>}
               {e.description && <p className="max-w-[700px] whitespace-pre-line text-ink/85">{e.description}</p>}
             </section>
           )}
 
           <section className="flex flex-col gap-3.5">
-            <h2 className="text-[26px] font-bold">ระยะและเวลา</h2>
+            <h2 className="text-[26px] font-bold">{p.racesAndTimes}</h2>
             <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
               {e.races.map((r) => (
                 <div key={r.id} className="flex flex-col gap-1.5 rounded-[20px] border-[1.5px] border-line p-4">
                   <Chip className="self-start text-lg">{r.code}</Chip>
-                  <Row k="ระยะทาง" v={`${r.distanceKm} กม.`} />
-                  {r.startAt && <Row k="ปล่อยตัว" v={fmt.time(r.startAt)} />}
-                  {r.cutoffMinutes && <Row k="Cut-off" v={`${Math.floor(r.cutoffMinutes / 60)}:${String(r.cutoffMinutes % 60).padStart(2, "0")} ชม.`} />}
-                  {r.ageMin !== null && <span className="text-[13px] text-muted">อายุ {r.ageMin} ปีขึ้นไปในวันแข่ง</span>}
+                  <Row k={p.distance} v={p.km(r.distanceKm)} />
+                  {r.startAt && <Row k={p.start} v={fmt.time(r.startAt)} />}
+                  {r.cutoffMinutes && <Row k={p.cutoff} v={p.hours(`${Math.floor(r.cutoffMinutes / 60)}:${String(r.cutoffMinutes % 60).padStart(2, "0")}`)} />}
+                  {r.ageMin !== null && <span className="text-[13px] text-muted">{p.minAge(r.ageMin)}</span>}
                 </div>
               ))}
             </div>
@@ -109,7 +113,7 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
           {shirt && shirt.variants.length > 0 && (
             <section className="flex flex-col gap-3.5">
               <h2 className="text-[26px] font-bold">{shirt.name}</h2>
-              <p className="text-sm text-muted">รวมในค่าสมัคร · ตัวเลขคือรอบอก (นิ้ว)</p>
+              <p className="text-sm text-muted">{p.shirtNote}</p>
               <div className="flex flex-wrap gap-2">
                 {shirt.variants.map((v) => (
                   <span key={v.id} className={`rounded-2xl px-4 py-2 text-center leading-tight ${v.available === 0 ? "bg-tint text-muted line-through" : "bg-ice"}`}>
@@ -123,7 +127,7 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
 
           {e.faq.length > 0 && (
             <section className="flex flex-col gap-2.5">
-              <h2 className="text-[26px] font-bold">คำถามที่พบบ่อย</h2>
+              <h2 className="text-[26px] font-bold">{p.faq}</h2>
               {e.faq.map((f) => (
                 <details key={f.q} className="rounded-[18px] bg-tint px-5 py-4">
                   <summary className="cursor-pointer font-semibold">{f.q}</summary>
@@ -134,11 +138,11 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
           )}
         </div>
 
-        <aside aria-label="สมัครงานนี้" className="flex min-w-0 flex-[1_1_360px] flex-col gap-4 lg:sticky lg:top-6">
+        <aside aria-label={p.registerLabel} className="flex min-w-0 flex-[1_1_360px] flex-col gap-4 lg:sticky lg:top-6">
           <div className="flex flex-col gap-3 rounded-[28px] border border-line bg-white p-5 shadow-[0_18px_40px_rgba(14,42,71,.12)]">
             <div className="flex items-center justify-between">
-              <h2 className="text-[22px] font-bold">เลือกระยะ</h2>
-              {best.length > 0 && <Chip className="text-[13px]">เริ่ม {baht(Math.min(...best.map((r) => r.priceSatang!)))}</Chip>}
+              <h2 className="text-[22px] font-bold">{p.chooseRace}</h2>
+              {best.length > 0 && <Chip className="text-[13px]">{p.from(baht(Math.min(...best.map((r) => r.priceSatang!))))}</Chip>}
             </div>
             <RacePicker eventId={e.id} slug={e.slug} races={e.races} waitlist={e.policy.waitlist} />
           </div>
@@ -147,7 +151,7 @@ async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">,
               {initials(e.organizer.name)}
             </span>
             <span className="leading-snug">
-              <span className="text-[13px] text-muted">จัดโดย</span>
+              <span className="text-[13px] text-muted">{p.organisedBy}</span>
               <br />
               <b className="font-semibold">{e.organizer.name}</b>
             </span>
@@ -175,10 +179,6 @@ function Row({ k, v }: { k: string; v: string }) {
       <b className="font-semibold">{v}</b>
     </span>
   );
-}
-
-function typeLabel(t: EventDetail["type"]): string {
-  return { road: "ถนน", trail: "เทรล", virtual: "Virtual", ultra: "อัลตร้า", fun_run: "ฟันรัน" }[t];
 }
 
 function initials(name: string): string {

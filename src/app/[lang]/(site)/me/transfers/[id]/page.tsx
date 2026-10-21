@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
+import { localePath } from "@/i18n/config";
+import Link from "@/i18n/link";
+import { getLocale, getT } from "@/i18n/server";
 import { api, apiOrThrow } from "@/lib/api";
-import { baht, fmt } from "@/lib/format";
+import { baht, fmtFor } from "@/lib/format";
 import type { EventDetail, RunnerProfile, Transfer } from "@/lib/types";
 import { AcceptForm } from "./accept-form";
 
-export const metadata: Metadata = { title: "รับโอนสิทธิ์" };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t.me.acceptTransfer.title };
+}
 
 type Props = PageProps<"/[lang]/me/transfers/[id]">;
 
@@ -24,16 +29,17 @@ export default function AcceptTransferPage({ params }: Props) {
 }
 
 async function Accept({ params }: Pick<Props, "params">) {
-  const { id } = await params;
+  const [{ id }, dict, locale] = await Promise.all([params, getT(), getLocale()]);
+  const ta = dict.me.acceptTransfer;
   const res = await api<{ incoming: Transfer[] }>("/v1/me/transfers", { auth: true });
   if (!res.ok) {
-    if (res.status === 401) redirect(`/login?next=/me/transfers/${id}`);
+    if (res.status === 401) redirect(localePath(locale, `/login?next=/me/transfers/${id}`));
     throw new Error(res.problem.title);
   }
   const t = res.data.incoming.find((x) => x.id === id);
   if (!t) notFound();
-  if (t.feeOrderId) redirect(`/orders/${t.feeOrderId}/pay`);
-  if (t.status === "completed" && t.registrationId) redirect(`/me/registrations/${t.registrationId}`);
+  if (t.feeOrderId) redirect(localePath(locale, `/orders/${t.feeOrderId}/pay`));
+  if (t.status === "completed" && t.registrationId) redirect(localePath(locale, `/me/registrations/${t.registrationId}`));
   const [event, profiles] = await Promise.all([
     apiOrThrow<EventDetail>(`/v1/events/${encodeURIComponent(t.event.slug)}`),
     api<{ items: RunnerProfile[] }>("/v1/me/profiles", { auth: true }),
@@ -43,25 +49,25 @@ async function Accept({ params }: Pick<Props, "params">) {
   return (
     <>
       <Link href="/me/transfers" className="self-start font-semibold text-ink">
-        ← โอนสิทธิ์
+        {dict.me.back.transfers}
       </Link>
       <div>
-        <h1 className="text-3xl font-bold">รับโอนสิทธิ์</h1>
+        <h1 className="text-3xl font-bold">{ta.title}</h1>
         <p className="text-muted">
-          {t.event.name} · {t.race.code} · {fmt.date(t.event.eventDate)}
+          {t.event.name} · {t.race.code} · {fmtFor(locale).date(t.event.eventDate)}
         </p>
       </div>
       {t.status !== "pending" ? (
         <p role="status" className="rounded-card bg-white p-5 text-muted">
-          สิทธิ์นี้รับไม่ได้แล้ว
+          {ta.unavailable}
         </p>
       ) : (
         <AcceptForm
           transferId={t.id}
           questions={questions}
-          note={`จาก ${t.sender}${t.shirtSize ? ` · เสื้อไซซ์ ${t.shirtSize} (เปลี่ยนไซซ์ไม่ได้)` : ""}`}
+          note={ta.note(t.sender, t.shirtSize)}
           profiles={profiles.ok ? profiles.data.items : []}
-          submitLabel={t.feeSatang > 0 ? `รับสิทธิ์และชำระค่าธรรมเนียม ${baht(t.feeSatang)}` : "รับสิทธิ์"}
+          submitLabel={t.feeSatang > 0 ? ta.submitFee(baht(t.feeSatang)) : ta.submit}
         />
       )}
     </>
