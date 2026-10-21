@@ -49,6 +49,15 @@ export function distanceLabel(km: number): string {
   return `${km}K`;
 }
 
+/** A waiting room estimate in words: 45 → "ไม่ถึง 1 นาที", 400 → "ประมาณ 7 นาที", 5400 → "ประมาณ 1 ชม. 30 นาที". */
+export function waitLabel(seconds: number): string {
+  if (seconds < 60) return "ไม่ถึง 1 นาที";
+  const minutes = Math.ceil(seconds / 60);
+  if (minutes < 60) return `ประมาณ ${minutes} นาที`;
+  const rest = minutes % 60;
+  return `ประมาณ ${Math.floor(minutes / 60).toLocaleString()} ชม.${rest ? ` ${rest} นาที` : ""}`;
+}
+
 /** Minutes left as mm:ss, never negative. */
 export function countdown(msLeft: number): string {
   const total = Math.max(0, Math.floor(msLeft / 1000));
@@ -125,6 +134,11 @@ const PROBLEM_TH: Record<string, string> = {
   RACE_NOT_ELIGIBLE: "อายุหรือเพศของผู้วิ่งไม่ตรงเงื่อนไขของระยะนี้",
   PROFILE_EXISTS: "บันทึกผู้วิ่งที่ใช้เลขบัตรนี้ไว้แล้ว แก้ไขคนเดิมแทน",
   TOO_MANY_PROFILES: "บันทึกผู้วิ่งได้สูงสุด 20 คน ลบคนที่ไม่ใช้แล้วก่อน",
+  RATE_LIMITED: "มีคนใช้งานพร้อมกันจำนวนมาก รอสักครู่แล้วลองใหม่",
+  QUEUE_REQUIRED: "งานนี้ต้องเข้าคิวก่อนสมัคร",
+  QUEUE_TOKEN_EXPIRED: "หมดเวลาสมัครของรอบคิวคุณแล้ว เข้าคิวใหม่อีกครั้ง",
+  QUEUE_UNAVAILABLE: "ระบบคิวไม่พร้อมใช้งานตอนนี้ ลองใหม่อีกครั้ง",
+  WAITING_ROOM_UNAVAILABLE: "เซิร์ฟเวอร์นี้ยังเปิดระบบคิวไม่ได้ ติดต่อทีมงานก้าว",
   // Organiser sign-up and KYC
   TOO_MANY_PENDING_TEAMS: "คุณมีทีมที่รอตรวจเอกสารอยู่ 3 ทีมแล้ว ส่งเอกสารให้ครบก่อนเปิดทีมใหม่",
   KYC_LOCKED: "ชื่อตามทะเบียนและเลขผู้เสียภาษีผ่านการตรวจแล้ว ติดต่อทีมงานก้าวหากต้องแก้",
@@ -144,7 +158,10 @@ const PROBLEM_TH: Record<string, string> = {
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */
-export function problemMessage(p: { code: string; title: string; detail?: string }): string {
+export function problemMessage(p: { code: string; title: string; detail?: string; retryAfterSeconds?: unknown }): string {
+  if (p.code === "RATE_LIMITED" && typeof p.retryAfterSeconds === "number") {
+    return `มีคนใช้งานพร้อมกันจำนวนมาก รอ ${p.retryAfterSeconds.toLocaleString()} วินาทีแล้วลองใหม่`;
+  }
   return PROBLEM_TH[p.code] ?? p.detail ?? p.title;
 }
 

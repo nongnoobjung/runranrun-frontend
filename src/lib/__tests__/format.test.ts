@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baht, countdown, duration, fmt, pace, problemMessage, provinceName } from "../format";
+import { baht, countdown, duration, fmt, pace, problemMessage, provinceName, waitLabel } from "../format";
 
 describe("format", () => {
   it("shows baht from satang, with satang only when needed", () => {
@@ -24,6 +24,20 @@ describe("format", () => {
     expect(problemMessage({ code: "SOMETHING_NEW", title: "t", detail: "d" })).toBe("d");
     expect(provinceName("BKK")).toBe("กรุงเทพฯ");
     expect(provinceName("XYZ")).toBe("XYZ");
+  });
+
+  it("puts a waiting room estimate into words", () => {
+    expect(waitLabel(45)).toBe("ไม่ถึง 1 นาที");
+    expect(waitLabel(400)).toBe("ประมาณ 7 นาที");
+    expect(waitLabel(3600)).toBe("ประมาณ 1 ชม.");
+    expect(waitLabel(5400)).toBe("ประมาณ 1 ชม. 30 นาที");
+  });
+
+  it("says how long to wait when the API is rate limiting", () => {
+    expect(problemMessage({ code: "RATE_LIMITED", title: "Too many requests", retryAfterSeconds: 42 })).toBe(
+      "มีคนใช้งานพร้อมกันจำนวนมาก รอ 42 วินาทีแล้วลองใหม่",
+    );
+    expect(problemMessage({ code: "RATE_LIMITED", title: "Too many requests" })).toBe("มีคนใช้งานพร้อมกันจำนวนมาก รอสักครู่แล้วลองใหม่");
   });
 });
 

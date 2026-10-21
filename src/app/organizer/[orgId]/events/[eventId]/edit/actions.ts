@@ -17,6 +17,8 @@ export async function updateEvent(orgId: string, eventId: string, _prev: OrgForm
     holdMinutes: num(fd, "holdMinutes") ?? 15,
     allowRefund: fd.get("allowRefund") === "on",
     waitlistEnabled: fd.get("waitlistEnabled") === "on",
+    useWaitingRoom: fd.get("useWaitingRoom") === "on",
+    queueAdmitPerMinute: num(fd, "queueAdmitPerMinute") ?? 100,
     refundDeadline: bangkokToIso(text(fd, "refundDeadline")),
     allowTransfer: fd.get("allowTransfer") === "on",
     transferFeeSatang: satang(fd, "transferFee") ?? 0,

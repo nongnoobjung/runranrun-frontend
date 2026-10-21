@@ -24,6 +24,8 @@ export interface EventFormValues {
   refundDeadline: string | null;
   refundPercentBps: number;
   waitlistEnabled: boolean;
+  useWaitingRoom: boolean;
+  queueAdmitPerMinute: number;
   allowTransfer: boolean;
   transferFeeSatang: number;
   transferDeadline: string | null;
@@ -146,6 +148,27 @@ export function EventForm({
             ให้นักวิ่งเข้าคิวได้เมื่อระยะเต็ม
           </label>
           <p className="text-[13px] text-muted">ที่ว่างจากการยกเลิกหรือเพิ่มโควต้าจะเสนอให้คิวตามลำดับ คนละ 24 ชั่วโมงก่อนส่งต่อคิวถัดไป</p>
+        </Card>
+
+        <Card title="คิวเข้าสมัคร (waiting room)">
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input type="checkbox" name="useWaitingRoom" defaultChecked={event.useWaitingRoom} className="h-5 w-5 accent-brand" />
+            ให้นักวิ่งเข้าคิวก่อนเลือกระยะ
+          </label>
+          <Field label="ปล่อยเข้าสมัคร (คนต่อนาที)" hint="1–10,000 คน" error={err("queueAdmitPerMinute")}>
+            <input
+              name="queueAdmitPerMinute"
+              type="number"
+              min={1}
+              max={10000}
+              inputMode="numeric"
+              defaultValue={event.queueAdmitPerMinute}
+              className={inputClass}
+            />
+          </Field>
+          <p className="text-[13px] text-muted">
+            สำหรับงานที่คาดว่าคนจะแห่สมัครพร้อมกันตอนเปิด นักวิ่งเห็นลำดับคิวและเวลารอ ระบบปล่อยเข้าทีละรอบทุกไม่กี่วินาที ถึงคิวแล้วมีเวลา 10 นาทีเริ่มสมัคร
+          </p>
         </Card>
 
         <Card title="โอนสิทธิ์">

@@ -4,10 +4,12 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EventBanner } from "@/components/banner";
 import { Markdown } from "@/components/markdown";
-import { AvailabilityPill, Chip } from "@/components/ui";
+import { ScrollIntoView } from "@/components/scroll-into-view";
+import { AvailabilityPill, buttonClass, Chip } from "@/components/ui";
 import { api } from "@/lib/api";
 import { pick, type Lang } from "@/lib/content";
 import { baht, fmt } from "@/lib/format";
+import { getQueueToken, queueTokenExpiry } from "@/lib/session";
 import type { EventDetail } from "@/lib/types";
 import { Gallery } from "./gallery";
 import { RacePicker } from "./race-picker";
@@ -66,6 +68,10 @@ async function EventContent({ params, lang: langPromise }: Pick<PageProps<"/even
   const shirt = e.products.find((p) => p.type === "shirt");
   const best = e.races.filter((r) => r.priceSatang !== null);
   const totalLeft = e.races.reduce((s, r) => s + r.available, 0);
+  // With a waiting room the race picker only opens for a runner the queue has let in
+  // (unless nothing is left to queue for: then it still offers the waitlist).
+  const admittedUntil = e.policy.waitingRoom ? queueTokenExpiry(await getQueueToken(e.id)) : null;
+  const queueFirst = e.policy.waitingRoom && !admittedUntil && e.races.some((r) => r.available > 0 && r.availability !== "closed");
 
   return (
     <>
@@ -203,13 +209,25 @@ async function EventContent({ params, lang: langPromise }: Pick<PageProps<"/even
           )}
         </div>
 
-        <aside aria-label="สมัครงานนี้" className="flex min-w-0 flex-[1_1_360px] flex-col gap-4 lg:sticky lg:top-6">
+        <aside id="register" aria-label="สมัครงานนี้" className="flex min-w-0 flex-[1_1_360px] scroll-mt-6 flex-col gap-4 lg:sticky lg:top-6">
           <div className="flex flex-col gap-3 rounded-[28px] border border-line bg-white p-5 shadow-[0_18px_40px_rgba(14,42,71,.12)]">
             <div className="flex items-center justify-between">
               <h2 className="text-[22px] font-bold">เลือกระยะ</h2>
               {best.length > 0 && <Chip className="text-[13px]">เริ่ม {baht(Math.min(...best.map((r) => r.priceSatang!)))}</Chip>}
             </div>
-            <RacePicker eventId={e.id} slug={e.slug} races={e.races} waitlist={e.policy.waitlist} />
+            {queueFirst ? (
+              <QueueEntry slug={e.slug} races={e.races} />
+            ) : (
+              <>
+                {admittedUntil && (
+                  <p role="status" className="scroll-mt-4 rounded-2xl bg-ok-soft px-4 py-3 text-sm text-ok">
+                    <ScrollIntoView hash="register" />
+                    <b className="font-semibold">ถึงคิวของคุณแล้ว</b> เลือกระยะและกดสมัครภายใน {fmt.time(admittedUntil.toISOString())} น.
+                  </p>
+                )}
+                <RacePicker eventId={e.id} slug={e.slug} races={e.races} waitlist={e.policy.waitlist} />
+              </>
+            )}
           </div>
           <div className="flex items-center gap-3.5 rounded-card bg-tint p-4">
             <span aria-hidden className="grid h-12 w-12 flex-none place-items-center rounded-full bg-ink font-bold text-white">
@@ -224,6 +242,31 @@ async function EventContent({ params, lang: langPromise }: Pick<PageProps<"/even
         </aside>
       </div>
     </>
+  );
+}
+
+/** Instead of the race picker while the event uses a waiting room: what is on offer, and the way into the queue. */
+function QueueEntry({ slug, races }: { slug: string; races: EventDetail["races"] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-2" aria-label="ระยะที่เปิดรับ">
+        {races.map((r) => (
+          <li key={r.id} className="flex items-center justify-between gap-3 rounded-[18px] border-[1.5px] border-line px-4 py-3">
+            <b className="text-lg font-bold">{r.code}</b>
+            <span className="text-right text-sm leading-tight">
+              <b className="block text-base">{r.priceSatang !== null ? baht(r.priceSatang) : "–"}</b>
+              <span className={r.available <= 0 ? "text-bad" : "text-muted"}>{r.available <= 0 ? "เต็มแล้ว" : `เหลือ ${r.available.toLocaleString()} ที่`}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="rounded-2xl bg-ice px-4 py-3 text-sm">
+        งานนี้มีคนสมัครพร้อมกันจำนวนมาก กดเข้าคิวก่อน ระบบจะปล่อยเข้าเลือกระยะทีละรอบตามลำดับ
+      </p>
+      <Link href={`/events/${slug}/queue`} className={`${buttonClass} min-h-14 rounded-[18px] text-[17px] no-underline`}>
+        เข้าคิวสมัคร
+      </Link>
+    </div>
   );
 }
 
