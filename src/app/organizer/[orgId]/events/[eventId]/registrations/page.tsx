@@ -18,6 +18,7 @@ import {
   type RegistrationList,
   type RegistrationStatus,
 } from "@/lib/org";
+import { SetBibForm } from "../bibs/bib-forms";
 import { RevealId } from "./reveal-id";
 
 export const metadata: Metadata = { title: "ผู้สมัคร" };
@@ -212,7 +213,13 @@ async function Registrations({ params, searchParams }: Props) {
         {f.selected && (
           <div id="detail" className="scroll-mt-4 xl:order-last xl:sticky xl:top-4">
             <Suspense fallback={<div className="h-96 animate-pulse rounded-[28px] bg-white" aria-busy="true" />}>
-              <DetailPanel orgId={orgId} registrationId={f.selected} showPii={showPii} closeHref={`${base}${query(f, { page: f.page })}`} />
+              <DetailPanel
+                orgId={orgId}
+                registrationId={f.selected}
+                showPii={showPii}
+                bibEventId={can(org.role, "manage_event") ? eventId : null}
+                closeHref={`${base}${query(f, { page: f.page })}`}
+              />
             </Suspense>
           </div>
         )}
@@ -364,7 +371,20 @@ const TIMELINE: Record<RegistrationDetail["timeline"][number]["kind"], string> =
   checkin_voided: "ยกเลิกการรับของ",
 };
 
-async function DetailPanel({ orgId, registrationId, showPii, closeHref }: { orgId: string; registrationId: string; showPii: boolean; closeHref: string }) {
+async function DetailPanel({
+  orgId,
+  registrationId,
+  showPii,
+  bibEventId,
+  closeHref,
+}: {
+  orgId: string;
+  registrationId: string;
+  showPii: boolean;
+  /** Set when the viewer may change bib numbers. */
+  bibEventId: string | null;
+  closeHref: string;
+}) {
   const res = await api<RegistrationDetail>(`/v1/org/${orgId}/registrations/${encodeURIComponent(registrationId)}`, { auth: true });
   if (!res.ok) {
     return (
@@ -423,6 +443,14 @@ async function DetailPanel({ orgId, registrationId, showPii, closeHref }: { orgI
         ))}
       </dl>
       {showPii && <p className="text-[13px] text-muted">กด “แสดง” เลขบัตรแล้ว ระบบจะบันทึกชื่อคุณไว้ในประวัติการเข้าถึง</p>}
+
+      {bibEventId && r.status === "confirmed" && (
+        <div className="flex flex-col gap-2">
+          <h3 className="font-semibold">เลขบิบ</h3>
+          <SetBibForm key={r.id} orgId={orgId} eventId={bibEventId} registrationId={r.id} current={r.bibNumber} label={`เลขบิบของ ${displayName(r)}`} />
+          <span className="text-[13px] text-muted">เว้นว่างแล้วบันทึก = ลบเลขเดิม</span>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <h3 className="font-semibold">ประวัติ</h3>
