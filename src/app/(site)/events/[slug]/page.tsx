@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EventBanner } from "@/components/banner";
@@ -60,6 +61,11 @@ async function EventContent({ params }: Pick<PageProps<"/events/[slug]">, "param
               </span>
               {e.venue && <span>{e.venue}</span>}
             </div>
+            {e.resultsPublishedAt && (
+              <Link href={`/events/${e.slug}/results`} className="self-start rounded-full bg-white px-5 py-2.5 font-semibold text-ink no-underline">
+                ดูผลการแข่งขัน →
+              </Link>
+            )}
           </div>
         </EventBanner>
       </section>
