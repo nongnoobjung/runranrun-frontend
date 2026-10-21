@@ -95,6 +95,9 @@ export interface OrgEvent {
   /** Share paid back, in basis points (8000 = 80%). */
   refundPercentBps: number;
   waitlistEnabled: boolean;
+  /** Runners queue and are let into registration at queueAdmitPerMinute. */
+  useWaitingRoom: boolean;
+  queueAdmitPerMinute: number;
   allowTransfer: boolean;
   /** Paid by whoever takes the place over. */
   transferFeeSatang: number;

@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { api } from "@/lib/api";
 import { problemMessage } from "@/lib/format";
-import { clearToken, getToken, setToken } from "@/lib/session";
-import type { CheckoutSession, Order, Payment } from "@/lib/types";
+import { clearQueueToken, clearToken, getQueueToken, getToken, setQueueToken, setToken } from "@/lib/session";
+import type { CheckoutSession, Order, Payment, QueueStatus } from "@/lib/types";
 
 export interface FormState {
   error?: string;
@@ -48,13 +48,21 @@ export async function startCheckout(_prev: FormState, formData: FormData): Promi
     .filter((r) => r.quantity > 0);
   if (races.length === 0) return { error: "เลือกระยะและจำนวนผู้วิ่งอย่างน้อย 1 คน" };
 
+  const eventId = String(formData.get("eventId") ?? "");
+  // Events with a waiting room want the admission the queue gave this runner.
+  const queueToken = z.string().uuid().safeParse(eventId).success ? await getQueueToken(eventId) : undefined;
   const res = await api<CheckoutSession>("/v1/checkout/sessions", {
     method: "POST",
     auth: true,
-    body: { eventId: formData.get("eventId"), races },
+    body: { eventId, races },
+    headers: queueToken ? { "x-queue-admission": queueToken } : undefined,
   });
   if (!res.ok) {
     if (res.status === 401) redirect(`/login?next=/events/${encodeURIComponent(slug)}`);
+    if (res.problem.code === "QUEUE_REQUIRED" || res.problem.code === "QUEUE_TOKEN_EXPIRED") {
+      if (queueToken) await clearQueueToken(eventId);
+      redirect(`/events/${encodeURIComponent(slug)}/queue${res.problem.code === "QUEUE_TOKEN_EXPIRED" ? "?expired=1" : ""}`);
+    }
     return { error: problemMessage(res.problem) };
   }
   redirect(`/checkout/${res.data.id}`);
@@ -207,6 +215,33 @@ export async function devCompletePayment(orderId: string): Promise<{ error?: str
 export async function cancelCheckout(sessionId: string, slug: string): Promise<void> {
   await api(`/v1/checkout/sessions/${sessionId}`, { method: "DELETE", auth: true });
   redirect(`/events/${slug}`);
+}
+
+// ---------------------------------------------------------------- waiting room
+
+export interface QueuePoll {
+  status?: QueueStatus;
+  error?: string;
+  /** Set when the API asked us to slow down. */
+  retryAfterSeconds?: number;
+}
+
+/**
+ * Joins an event's waiting room (`join`, idempotent: the place is kept) or reads the runner's place in it.
+ * Once admitted, the token goes into an httpOnly cookie for startCheckout; the browser never sees it.
+ */
+export async function pollQueue(eventId: string, join: boolean): Promise<QueuePoll> {
+  if (!z.string().uuid().safeParse(eventId).success) return { error: "ไม่พบงานนี้" };
+  const res = join
+    ? await api<QueueStatus>("/v1/checkout/queue", { method: "POST", auth: true, body: { eventId } })
+    : await api<QueueStatus>(`/v1/checkout/queue/${eventId}`, { auth: true });
+  if (!res.ok) {
+    const retry = res.problem.retryAfterSeconds;
+    return { error: problemMessage(res.problem), retryAfterSeconds: typeof retry === "number" ? retry : undefined };
+  }
+  if (res.data.admission) await setQueueToken(eventId, res.data.admission.token, res.data.admission.expiresAt);
+  // The token stays on the server.
+  return { status: { ...res.data, admission: res.data.admission && { token: "", expiresAt: res.data.admission.expiresAt } } };
 }
 
 // ---------------------------------------------------------------- refunds

@@ -1,4 +1,5 @@
 import "server-only";
+import { headers as requestHeaders } from "next/headers";
 import { connection } from "next/server";
 import { getToken } from "./session";
 import type { ApiProblem } from "./types";
@@ -10,6 +11,7 @@ interface Options {
   body?: unknown;
   auth?: boolean;
   idempotencyKey?: string;
+  headers?: Record<string, string>;
 }
 
 function baseUrl(): string {
@@ -27,6 +29,8 @@ export async function api<T>(path: string, opts: Options = {}): Promise<ApiResul
   const headers: Record<string, string> = { accept: "application/json" };
   if (opts.body !== undefined) headers["content-type"] = "application/json";
   if (opts.idempotencyKey) headers["idempotency-key"] = opts.idempotencyKey;
+  Object.assign(headers, opts.headers);
+  await forwardClientIp(headers);
   if (opts.auth) {
     const token = await getToken();
     if (!token) return { ok: false, status: 401, problem: { status: 401, code: "UNAUTHORIZED", title: "Sign in to continue" } };
@@ -49,6 +53,21 @@ export async function api<T>(path: string, opts: Options = {}): Promise<ApiResul
   const json = text ? JSON.parse(text) : undefined;
   if (res.ok) return { ok: true, status: res.status, data: json as T };
   return { ok: false, status: res.status, problem: (json as ApiProblem) ?? { status: res.status, code: "HTTP_ERROR", title: res.statusText } };
+}
+
+/**
+ * Every API call comes from this server, so the API's per-IP rate limits would see one address for everybody.
+ * With WEB_PROXY_SECRET (same value as the API's) the visitor's address goes along: the one the nearest proxy saw,
+ * i.e. the last x-forwarded-for entry, which the visitor cannot choose.
+ */
+async function forwardClientIp(headers: Record<string, string>): Promise<void> {
+  const secret = process.env.WEB_PROXY_SECRET;
+  if (!secret) return;
+  const h = await requestHeaders();
+  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",").at(-1)?.trim();
+  if (!ip) return;
+  headers["x-kao-client-ip"] = ip;
+  headers["x-kao-proxy-secret"] = secret;
 }
 
 /** For pages: returns the data or throws, letting error.tsx / notFound handle it. */
