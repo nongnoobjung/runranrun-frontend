@@ -151,7 +151,7 @@ export interface MyRegistration {
   orderNo: string;
 }
 
-/** Thai bank codes the refund form offers. */
+/** Thai bank codes, for refund and payout accounts. */
 export const BANKS: Record<string, string> = {
   KBANK: "ธนาคารกสิกรไทย",
   SCB: "ธนาคารไทยพาณิชย์",
