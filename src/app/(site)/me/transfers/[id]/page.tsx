@@ -4,7 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { api, apiOrThrow } from "@/lib/api";
 import { baht, fmt } from "@/lib/format";
-import type { EventDetail, Transfer } from "@/lib/types";
+import type { EventDetail, RunnerProfile, Transfer } from "@/lib/types";
 import { AcceptForm } from "./accept-form";
 
 export const metadata: Metadata = { title: "รับโอนสิทธิ์" };
@@ -34,7 +34,10 @@ async function Accept({ params }: Pick<Props, "params">) {
   if (!t) notFound();
   if (t.feeOrderId) redirect(`/orders/${t.feeOrderId}/pay`);
   if (t.status === "completed" && t.registrationId) redirect(`/me/registrations/${t.registrationId}`);
-  const event = await apiOrThrow<EventDetail>(`/v1/events/${encodeURIComponent(t.event.slug)}`);
+  const [event, profiles] = await Promise.all([
+    apiOrThrow<EventDetail>(`/v1/events/${encodeURIComponent(t.event.slug)}`),
+    api<{ items: RunnerProfile[] }>("/v1/me/profiles", { auth: true }),
+  ]);
   const questions = (event.questions ?? []).filter((q) => !q.raceIds || q.raceIds.includes(t.race.id));
 
   return (
@@ -57,6 +60,7 @@ async function Accept({ params }: Pick<Props, "params">) {
           transferId={t.id}
           questions={questions}
           note={`จาก ${t.sender}${t.shirtSize ? ` · เสื้อไซซ์ ${t.shirtSize} (เปลี่ยนไซซ์ไม่ได้)` : ""}`}
+          profiles={profiles.ok ? profiles.data.items : []}
           submitLabel={t.feeSatang > 0 ? `รับสิทธิ์และชำระค่าธรรมเนียม ${baht(t.feeSatang)}` : "รับสิทธิ์"}
         />
       )}

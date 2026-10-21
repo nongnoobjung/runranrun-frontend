@@ -3,10 +3,11 @@
 import { useActionState, useState, useTransition, type FormEvent } from "react";
 import { submitCheckout, type FormState } from "@/app/actions";
 import { Countdown } from "@/components/countdown";
-import { Field, Questions, RunnerFields } from "@/components/runner-fields";
+import { Field, Questions } from "@/components/runner-fields";
+import { SavedRunnerFields } from "@/components/saved-runner";
 import { buttonClass, ErrorNote } from "@/components/ui";
 import { baht } from "@/lib/format";
-import type { FormQuestion } from "@/lib/types";
+import type { FormQuestion, RunnerProfile } from "@/lib/types";
 
 export interface Slot {
   raceId: string;
@@ -29,6 +30,7 @@ export function CheckoutForm({
   slots,
   sizes,
   questions,
+  profiles,
 }: {
   sessionId: string;
   eventName: string;
@@ -36,6 +38,8 @@ export function CheckoutForm({
   slots: Slot[];
   sizes: SizeOption[];
   questions: FormQuestion[];
+  /** The user's saved runners; the first runner starts as their own profile, if they saved one. */
+  profiles: RunnerProfile[];
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(submitCheckout, {});
   const [, startTransition] = useTransition();
@@ -106,7 +110,7 @@ export function CheckoutForm({
                 นี่คือฉัน
               </label>
             </div>
-            <RunnerFields prefix={`p${i}`} err={err} />
+            <SavedRunnerFields prefix={`p${i}`} err={err} profiles={profiles} initial={i === 0 ? profiles.find((p) => p.isSelf)?.id : undefined} />
           </div>
 
           {sizes.length > 0 && (

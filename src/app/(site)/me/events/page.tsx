@@ -16,12 +16,15 @@ export default function MyEventsPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="flex flex-wrap items-end justify-between gap-2">
           <h1 className="text-3xl font-bold">งานของฉัน</h1>
-          <span className="flex gap-3">
+          <span className="flex flex-wrap gap-x-3 gap-y-1">
             <Link href="/me/waitlist" className="text-sm font-semibold">
               คิว waitlist →
             </Link>
             <Link href="/me/transfers" className="text-sm font-semibold">
               โอนสิทธิ์ →
+            </Link>
+            <Link href="/me/profiles" className="text-sm font-semibold">
+              ข้อมูลผู้วิ่ง →
             </Link>
           </span>
         </div>
