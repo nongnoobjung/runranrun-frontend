@@ -65,7 +65,7 @@ async function EditEvent({ params }: Pick<PageProps<"/organizer/[orgId]/events/[
               descriptionTh: event.descriptionTh, coverImageUrl: event.coverImageUrl, registrationOpensAt: event.registrationOpensAt,
               registrationClosesAt: event.registrationClosesAt, holdMinutes: event.holdMinutes,
               allowRefund: event.allowRefund, refundDeadline: event.refundDeadline, refundPercentBps: event.refundPercentBps,
-              waitlistEnabled: event.waitlistEnabled,
+              waitlistEnabled: event.waitlistEnabled, useWaitingRoom: event.useWaitingRoom, queueAdmitPerMinute: event.queueAdmitPerMinute,
               allowTransfer: event.allowTransfer, transferFeeSatang: event.transferFeeSatang, transferDeadline: event.transferDeadline,
               allowRaceChange: event.allowRaceChange, raceChangeFeeSatang: event.raceChangeFeeSatang, raceChangeDeadline: event.raceChangeDeadline,
             }}
