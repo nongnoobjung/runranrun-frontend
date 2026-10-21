@@ -24,7 +24,7 @@ export async function orgMutation<T = unknown>(
   method: "POST" | "PATCH" | "PUT" | "DELETE",
   body?: unknown,
 ): Promise<MutationResult<T>> {
-  const res = await api<T>(`/v1/org/${orgId}${path}`, { method, body, auth: true });
+  const res = await api<T>(`/v1/org/${orgId}${path}`, body instanceof FormData ? { method, form: body, auth: true } : { method, body, auth: true });
   if (!res.ok) {
     if (res.status === 401) redirect(`/login?next=${encodeURIComponent("/organizer")}`);
     return { ok: false, state: problemState(res.problem) };
@@ -51,10 +51,18 @@ const VALIDATION_DETAIL_TH: Record<string, string> = {
   "Import at most 20,000 rows at a time": "นำเข้าได้ครั้งละไม่เกิน 20,000 แถว",
 };
 
+/** Field messages the API sets itself (the rest are Zod's English defaults). */
+const FIELD_MESSAGE_TH: Record<string, string> = {
+  "A valid 13-digit tax ID": "เลขผู้เสียภาษีไม่ถูกต้อง ตรวจ 13 หลักอีกครั้ง",
+  "Thai phone number": "เบอร์โทรไม่ถูกต้อง",
+  "5 digits": "รหัสไปรษณีย์ 5 หลัก",
+  "10–15 digits": "เลขบัญชี 10–15 หลัก",
+};
+
 export function problemState(p: ApiProblem): OrgFormState {
   const fieldErrors: Record<string, string> = {};
   // Zod's messages are English; the field highlight plus a Thai hint is enough for organisers.
-  for (const e of p.errors ?? []) fieldErrors[e.path] = "ตรวจสอบค่าในช่องนี้";
+  for (const e of p.errors ?? []) fieldErrors[e.path] = FIELD_MESSAGE_TH[e.message] ?? "ตรวจสอบค่าในช่องนี้";
   const detail = p.detail ? VALIDATION_DETAIL_TH[p.detail] : undefined;
   return { error: detail ?? problemMessage(p), fieldErrors };
 }
