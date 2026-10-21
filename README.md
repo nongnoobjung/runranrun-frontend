@@ -115,6 +115,7 @@ pnpm dev                       # http://localhost:3000
   - ข้อความอยู่ใน `src/i18n/dict/<ส่วน>.ts` เขียนผ่าน `defineDict({ th, en })` ไทยเป็นต้นฉบับ อังกฤษต้องมี key และชนิดตรงกันทุกตัว ขาดหรือเกินแม้ key เดียว `pnpm typecheck` จะไม่ผ่าน
   - ลิงก์ในหน้านักวิ่งใช้ `Link` จาก `@/i18n/link` (ESLint ห้าม `next/link` ในหน้านักวิ่ง) redirect ใช้ `localePath(locale, path)` · `?next=` เก็บเป็น path ไม่มีภาษา
   - ข้อความที่ผู้จัดเขียน (ชื่องาน ฯลฯ) ใช้ `localized(locale, event.name)`: มีภาษาอังกฤษก็แสดง ไม่มีก็ใช้ภาษาไทย
+  - หน้ากฎหมาย (`/privacy`, `/terms`, `/refund-policy`) เก็บเนื้อหาไทยและอังกฤษไว้คู่กันในไฟล์หน้า (`Record<Locale, …>` ขาดภาษาไหน typecheck ไม่ผ่าน) ฉบับอังกฤษบอกว่าถ้าต่างกันให้ถือฉบับไทย ชื่อบริษัทที่ยังเป็น placeholder มีทั้งสองภาษาใน `src/lib/legal.ts`
   - วันที่/เวลา/ตัวเลขใช้ `fmtFor(locale)` (ไทยปี ค.ศ. แบบเดิม อังกฤษแบบ `14 Feb 2027`) ราคาเป็น `฿` ทั้งสองภาษา ข้อความ error จาก API แปลด้วย `problemMessage(problem, locale)`
 - **ไซซ์เสื้อ:** กดสมัครแล้วจองที่ทันที ไซซ์เสื้อจองตอนส่งฟอร์มผ่าน `PUT /v1/checkout/sessions/:id/variants` ถ้าไซซ์หมดจะเตือนก่อนสร้างคำสั่งซื้อ
 - **Waiting room:** token ที่ได้ตอนถึงคิวเก็บใน httpOnly cookie ต่องาน (`kao_queue_<eventId>`) แล้ว `startCheckout` ส่งให้ API ใน `X-Queue-Admission` หมดอายุหรือไม่มีจะพากลับหน้าคิว

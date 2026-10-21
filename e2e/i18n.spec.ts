@@ -81,7 +81,7 @@ test("the legal pages in the English footer are in English, and say the Thai tex
     await page.getByRole("contentinfo").getByRole("link", { name: link }).click();
     await expect(page).toHaveURL(/\/en\//);
     await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
-    await expect(page.getByText("the Thai version applies")).toBeVisible();
+    await expect(page.getByRole("paragraph").filter({ hasText: "the Thai version applies" })).toBeVisible();
     await expectNoSideScroll(page);
     await page.goBack();
   }
