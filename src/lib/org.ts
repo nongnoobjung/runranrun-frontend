@@ -2,7 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { api, type ApiResult } from "./api";
-import type { EventType } from "./types";
+import type { EventType, FormQuestion } from "./types";
 
 /** Response shapes of the organizer backoffice API (/v1/org). Money is integer satang. */
 
@@ -153,9 +153,17 @@ export interface RegistrationDetail extends OrgRegistration {
   idDocMasked: string;
   bloodType: string | null;
   emergency: { name: string | null; phone: string | null };
+  /** Answers to the organiser's questions, in form order. */
+  answers: { key: string; label: string; type: FormQuestion["type"]; value: unknown }[];
   pricePaidSatang: number;
   order: { orderNo: string; status: string; totalSatang: number; paidAt: string | null; buyerName: string | null; buyerEmail: string | null } | null;
   timeline: { at: string; kind: "registered" | "paid" | "kit_pickup" | "checkin_voided"; detail: string | null }[];
+}
+
+/** A question as the form builder sees it; `answered` counts registrations that hold an answer. */
+export interface OrgQuestion extends FormQuestion {
+  id: string;
+  answered: number;
 }
 
 export interface CheckinRegistration extends OrgRegistration {

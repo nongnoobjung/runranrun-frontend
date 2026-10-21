@@ -65,15 +65,45 @@ const RUNNER_FIELDS = [
   "idDocType", "idDocNumber", "phone", "emergencyName", "emergencyPhone",
 ] as const;
 
-/** Turns API validation paths (participants.0.runner.birthDate) into form field names (p0.birthDate). */
+/** The API's messages for answers to the organiser's questions. */
+const ANSWER_ERROR_TH: Record<string, string> = {
+  required: "จำเป็นต้องตอบ",
+  "must be ticked": "ต้องติ๊กก่อนสมัคร",
+  "must be a number": "ใส่เป็นตัวเลข",
+  "out of range": "ตัวเลขอยู่นอกช่วงที่ผู้จัดกำหนด",
+};
+
+/**
+ * Turns API validation paths into form field names: participants.0.runner.birthDate → p0.birthDate,
+ * participants.0.answers.q_ab12 → p0.q.q_ab12.
+ */
 function toFieldErrors(errors: { path: string; message: string }[] | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   for (const e of errors ?? []) {
+    const answer = e.path.match(/^participants\.(\d+)\.answers\.(\w+)$/);
+    if (answer) {
+      out[`p${answer[1]}.q.${answer[2]}`] = ANSWER_ERROR_TH[e.message] ?? "คำตอบไม่ถูกต้อง";
+      continue;
+    }
     const m = e.path.match(/^participants\.(\d+)\.(?:runner\.)?(\w+)/);
     if (m) out[`p${m[1]}.${m[2]}`] = e.message;
     else if (e.path.startsWith("buyer.")) out[e.path] = e.message;
   }
   return out;
+}
+
+/** Collects one runner's answers; see the field names in the checkout form's Questions. The API checks them. */
+function answersOf(formData: FormData, i: number): Record<string, unknown> {
+  const answers: Record<string, unknown> = {};
+  for (const [name, value] of formData.entries()) {
+    const m = name.match(new RegExp(`^p${i}\\.(q|qm|qc)\\.(\\w+)$`));
+    if (!m || typeof value !== "string") continue;
+    const [, kind, key] = m;
+    if (kind === "qm") answers[key] = [...((answers[key] as string[] | undefined) ?? []), value];
+    else if (kind === "qc") answers[key] = true;
+    else if (value.trim() !== "") answers[key] = value.trim();
+  }
+  return answers;
 }
 
 export async function submitCheckout(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -98,6 +128,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
       shirtVariantId: shirt,
       isSelf: formData.get("self") === String(i),
       runner: { ...runner, nationality: runner.nationality ?? "TH" },
+      answers: answersOf(formData, i),
     };
   });
   const buyer = { name: get("buyer.name"), email: get("buyer.email"), phone: get("buyer.phone") };

@@ -1,3 +1,5 @@
+import type { QuestionType } from "./types";
+
 /** Formats integer satang as baht: 120000 → "฿1,200", 110160 → "฿1,101.60". */
 export function baht(satang: number): string {
   const whole = satang % 100 === 0;
@@ -70,6 +72,8 @@ const PROBLEM_TH: Record<string, string> = {
   REGISTRATION_NOT_FOUND: "ไม่พบผู้สมัครในงานนี้",
   ALREADY_PICKED_UP: "ผู้สมัครคนนี้รับของไปแล้ว",
   NOT_CONFIRMED: "ผู้สมัครคนนี้ยังไม่ได้ชำระเงิน หรือสิทธิ์ถูกยกเลิกแล้ว",
+  TOO_MANY_QUESTIONS: "ฟอร์มหนึ่งงานมีคำถามเพิ่มเติมได้ไม่เกิน 30 ข้อ",
+  QUESTION_IN_USE: "มีคนตอบคำถามนี้แล้ว จึงเปลี่ยนประเภทไม่ได้ สร้างคำถามใหม่แทน",
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */
@@ -85,4 +89,22 @@ export const PROVINCES: Record<string, string> = {
 /** Thai name for the API's province code; unknown codes are shown as they are. */
 export function provinceName(code: string | null): string | null {
   return code ? (PROVINCES[code] ?? code) : null;
+}
+
+export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
+  text: "ข้อความสั้น",
+  textarea: "ข้อความยาว",
+  number: "ตัวเลข",
+  select: "เลือกหนึ่งข้อ",
+  multiselect: "เลือกได้หลายข้อ",
+  checkbox: "ติ๊กยืนยัน",
+  date: "วันที่",
+};
+
+/** A runner's answer as text: choices joined, ticks as ใช่ / ไม่. */
+export function answerText(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "–";
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "boolean") return value ? "ใช่" : "ไม่";
+  return String(value);
 }

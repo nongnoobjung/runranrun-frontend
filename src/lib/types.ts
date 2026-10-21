@@ -69,6 +69,22 @@ export interface EventDetail {
   organizer: { slug: string; name: string; logoUrl: string | null };
   races: RaceDetail[];
   products: ProductDetail[];
+  /** The organiser's extra questions; each runner answers those for their race (raceIds null = every race). */
+  questions: FormQuestion[];
+}
+
+export type QuestionType = "text" | "textarea" | "number" | "select" | "multiselect" | "checkbox" | "date";
+
+export interface FormQuestion {
+  key: string;
+  label: string;
+  helpText: string | null;
+  type: QuestionType;
+  options: string[] | null;
+  required: boolean;
+  raceIds: string[] | null;
+  min: number | null;
+  max: number | null;
 }
 
 export interface CheckoutSession {
