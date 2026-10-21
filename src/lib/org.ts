@@ -44,6 +44,22 @@ export interface PriceTier {
   reserved: number;
 }
 
+export interface FaqEntry {
+  qTh: string;
+  aTh: string;
+  qEn: string | null;
+  aEn: string | null;
+}
+
+export interface GalleryImage {
+  id: string;
+  url: string;
+  width: number;
+  height: number;
+  captionTh: string | null;
+  captionEn: string | null;
+}
+
 export interface OrgRace {
   id: string;
   code: string;
@@ -59,6 +75,7 @@ export interface OrgRace {
   bibStart: number | null;
   bibEnd: number | null;
   bibNext: number | null;
+  routeMapUrl: string | null;
   tiers: PriceTier[];
 }
 
@@ -85,8 +102,15 @@ export interface OrgEvent {
   venueName: string | null;
   venueAddress: string | null;
   summaryTh: string | null;
+  summaryEn: string | null;
+  /** Markdown. */
   descriptionTh: string | null;
+  descriptionEn: string | null;
+  rulesTh: string | null;
+  rulesEn: string | null;
+  faq: FaqEntry[];
   coverImageUrl: string | null;
+  gallery: GalleryImage[];
   registrationOpensAt: string | null;
   registrationClosesAt: string | null;
   holdMinutes: number;

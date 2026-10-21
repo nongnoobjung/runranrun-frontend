@@ -17,9 +17,6 @@ export interface EventFormValues {
   provinceCode: string | null;
   venueName: string | null;
   venueAddress: string | null;
-  summaryTh: string | null;
-  descriptionTh: string | null;
-  coverImageUrl: string | null;
   registrationOpensAt: string | null;
   registrationClosesAt: string | null;
   holdMinutes: number;
@@ -41,12 +38,15 @@ export function EventForm({
   slugLocked,
   readOnly,
   provinces,
+  contentLink,
 }: {
   action: (prev: OrgFormState, fd: FormData) => Promise<OrgFormState>;
   event: EventFormValues;
   slugLocked: boolean;
   readOnly: boolean;
   provinces: [string, string][];
+  /** Where the description, rules, FAQ and images are edited. */
+  contentLink: React.ReactNode;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const [, startTransition] = useTransition();
@@ -89,21 +89,7 @@ export function EventForm({
               </select>
             </Field>
           </div>
-          <Field label="คำโปรยสั้น ๆ" hint="แสดงใต้ชื่องาน ไม่เกิน 300 ตัวอักษร" error={err("summaryTh")}>
-            <input name="summaryTh" defaultValue={event.summaryTh ?? ""} maxLength={300} className={inputClass} />
-          </Field>
-          <Field label="คำอธิบายงาน" error={err("descriptionTh")}>
-            <textarea
-              name="descriptionTh"
-              defaultValue={event.descriptionTh ?? ""}
-              rows={5}
-              maxLength={10_000}
-              className={`${inputClass} py-3`}
-            />
-          </Field>
-          <Field label="ลิงก์รูปแบนเนอร์" hint="แนะนำ 1600 × 900 px ถ้าเว้นว่างจะใช้ภาพประกอบตามประเภทงาน" error={err("coverImageUrl")}>
-            <input name="coverImageUrl" type="url" defaultValue={event.coverImageUrl ?? ""} className={inputClass} placeholder="https://" />
-          </Field>
+          {contentLink}
         </Card>
 
         <Card title="วัน เวลา และสถานที่">
