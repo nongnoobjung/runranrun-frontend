@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { inputClass } from "@/components/ui";
+import type { Runner, ScanResult } from "@/lib/checkin-offline";
 import { fmt } from "@/lib/format";
-import type { CheckinRegistration } from "@/lib/org";
-import { confirmPickup, lookupCode, type ScanResult } from "./actions";
+import { confirmPickup, lookupCode } from "./actions";
+import { SyncConflicts, SyncPanel } from "./sync-panel";
+import { useOfflineCheckin } from "./use-offline-checkin";
 
 interface Detector {
   detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]>;
@@ -13,18 +15,20 @@ type DetectorCtor = new (options: { formats: string[] }) => Detector;
 
 type Camera = { state: "off" } | { state: "starting" } | { state: "on" } | { state: "error"; message: string };
 
-const GENDER: Record<CheckinRegistration["gender"], string> = { male: "ชาย", female: "หญิง", other: "อื่น ๆ" };
-
-function displayName(r: CheckinRegistration) {
+function displayName(r: Runner) {
   return r.name.th ?? r.name.en;
 }
 
-/** Scan (camera or USB/typed code) → check the runner → hand over the kit once. */
+/**
+ * Scan (camera or USB/typed code) → check the runner → hand over the kit once.
+ * Without a network it checks the roster on the device and queues the handover until it can be sent.
+ */
 export function Scanner({ orgId, eventId }: { orgId: string; eventId: string }) {
+  const offline = useOfflineCheckin(orgId, eventId);
   const [result, setResult] = useState<ScanResult | null>(null);
   // One id per looked-up runner: a double tap or retried request then records the pickup once.
   const [clientUuid, setClientUuid] = useState<string | null>(null);
-  const [recent, setRecent] = useState<CheckinRegistration[]>([]);
+  const [recent, setRecent] = useState<{ runner: Runner; queued: boolean }[]>([]);
   const [camera, setCamera] = useState<Camera>({ state: "off" });
   const [pending, startTransition] = useTransition();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,13 +45,34 @@ export function Scanner({ orgId, eventId }: { orgId: string; eventId: string }) 
       // Pauses the camera loop until the staff member moves on; typed codes always go through.
       busyRef.current = true;
       startTransition(async () => {
-        const res = await lookupCode(orgId, eventId, code);
+        let res: ScanResult;
+        if (!offline.online) {
+          res = await offline.lookupLocal(code);
+        } else {
+          try {
+            res = await lookupCode(orgId, eventId, code);
+            offline.reachable();
+          } catch {
+            // The request never got an answer: carry on from the roster on the device.
+            offline.unreachableNow();
+            res = await offline.lookupLocal(code);
+          }
+          // Handed over offline on this device and not sent yet: the API does not know about it.
+          const queued = res.kind === "ready" ? offline.queuedFor(res.runner.id) : undefined;
+          if (res.kind === "ready" && queued) res = { kind: "picked_up", runner: { ...res.runner, kitPickedUpAt: queued.scannedAt }, offline: true };
+        }
         setResult(res);
         setClientUuid(res.kind === "ready" ? crypto.randomUUID() : null);
       });
     },
-    [orgId, eventId],
+    [orgId, eventId, offline],
   );
+
+  // The camera loop starts once; it must still see the latest online state, roster and queue.
+  const lookupRef = useRef(lookup);
+  useEffect(() => {
+    lookupRef.current = lookup;
+  }, [lookup]);
 
   const reset = useCallback(() => {
     busyRef.current = false;
@@ -61,15 +86,31 @@ export function Scanner({ orgId, eventId }: { orgId: string; eventId: string }) 
 
   function confirm(form: FormData) {
     if (result?.kind !== "ready" || !clientUuid) return;
-    const registration = result.registration;
+    const runner = result.runner;
+    const pickedUpBy = String(form.get("pickedUpBy") ?? "").trim();
     startTransition(async () => {
-      const res = await confirmPickup(orgId, eventId, {
-        code: registration.registrationNo,
-        clientUuid,
-        pickedUpBy: String(form.get("pickedUpBy") ?? ""),
-      });
+      let res: ScanResult | null = null;
+      if (offline.online && !result.offline) {
+        try {
+          res = await confirmPickup(orgId, eventId, { code: runner.registrationNo, clientUuid, pickedUpBy });
+          offline.reachable();
+          if (res.kind === "done") await offline.noteCheckedIn(res.runner.id, res.runner.kitPickedUpAt);
+        } catch {
+          // It may or may not have reached the API; the queue resends it with the same clientUuid, so it counts once.
+          offline.unreachableNow();
+        }
+      }
+      if (!res) {
+        const scannedAt = await offline.enqueue(runner, clientUuid, pickedUpBy || null);
+        res = { kind: "done", runner: { ...runner, kitPickedUpAt: scannedAt }, queued: true };
+        // Looked up offline but the network is back by now: no need to wait for the next retry.
+        if (offline.online) void offline.sync();
+      }
       setResult(res);
-      if (res.kind === "done") setRecent((list) => [res.registration, ...list.filter((r) => r.id !== res.registration.id)].slice(0, 5));
+      if (res.kind === "done") {
+        const done = { runner: res.runner, queued: res.queued };
+        setRecent((list) => [done, ...list.filter((r) => r.runner.id !== done.runner.id)].slice(0, 5));
+      }
     });
   }
 
@@ -112,7 +153,7 @@ export function Scanner({ orgId, eventId }: { orgId: string; eventId: string }) 
             // The same QR stays in frame for a while; ignore it for a few seconds after reading it.
             if (hit?.rawValue && !(last && last.code === hit.rawValue && now - last.at < 5000)) {
               lastScanRef.current = { code: hit.rawValue, at: now };
-              lookup(hit.rawValue);
+              lookupRef.current(hit.rawValue);
             }
           } catch {
             // A frame that cannot be decoded is normal; try the next one.
@@ -140,6 +181,8 @@ export function Scanner({ orgId, eventId }: { orgId: string; eventId: string }) 
 
   return (
     <div className="flex flex-col gap-4">
+      <SyncPanel offline={offline} />
+      <SyncConflicts offline={offline} />
       <div className="relative grid aspect-[4/3] max-h-[340px] w-full place-items-center overflow-hidden rounded-[28px] bg-ink">
         <video ref={videoRef} muted playsInline className={`absolute inset-0 h-full w-full object-cover ${cameraOn ? "" : "hidden"}`} />
         <div aria-hidden className="relative h-36 w-36">
@@ -210,13 +253,16 @@ export function Scanner({ orgId, eventId }: { orgId: string; eventId: string }) 
         <section className="flex flex-col gap-2 rounded-[28px] bg-white p-5">
           <h2 className="font-semibold">มอบของล่าสุด</h2>
           <ul className="flex flex-col divide-y divide-line text-sm">
-            {recent.map((r) => (
+            {recent.map(({ runner: r, queued }) => (
               <li key={r.id} className="flex items-center justify-between gap-3 py-2">
                 <span className="min-w-0 truncate">
-                  {displayName(r)} · {r.race.code}
+                  {displayName(r)} · {r.raceCode}
                   {r.bibNumber && ` · บิบ ${r.bibNumber}`}
                 </span>
-                <span className="flex-none text-muted">{r.kitPickedUpAt ? fmt.time(r.kitPickedUpAt) : ""}</span>
+                <span className="flex-none text-muted">
+                  {queued && offline.queuedFor(r.id) && <span className="mr-2 rounded-full bg-warn-soft px-2 py-0.5 text-xs text-warn">รอส่ง</span>}
+                  {r.kitPickedUpAt ? fmt.time(r.kitPickedUpAt) : ""}
+                </span>
               </li>
             ))}
           </ul>
@@ -226,7 +272,7 @@ export function Scanner({ orgId, eventId }: { orgId: string; eventId: string }) 
   );
 }
 
-function RunnerTile({ r }: { r: CheckinRegistration }) {
+function RunnerTile({ r }: { r: Runner }) {
   return (
     <div className="flex items-center gap-4 rounded-[20px] bg-white p-3.5 text-ink">
       <span className="grid h-[72px] w-[72px] flex-none place-items-center rounded-2xl bg-ice text-3xl font-bold text-brand" aria-label={`ไซซ์เสื้อ ${r.shirtSize ?? "ไม่มี"}`}>
@@ -235,19 +281,16 @@ function RunnerTile({ r }: { r: CheckinRegistration }) {
       <span className="flex min-w-0 flex-col">
         <b className="text-lg leading-snug font-semibold break-words">{displayName(r)}</b>
         {r.name.th && <span className="text-[13px] text-muted">{r.name.en}</span>}
-        <span className="text-[13px] text-muted">
-          {GENDER[r.gender]}
-          {r.ageGroup ? ` · รุ่น ${r.ageGroup}` : ` · อายุ ${r.age}`} · {r.registrationNo}
-        </span>
+        <span className="text-[13px] text-muted">{r.detail ? `${r.detail} · ${r.registrationNo}` : r.registrationNo}</span>
       </span>
     </div>
   );
 }
 
-function RaceBadge({ r }: { r: CheckinRegistration }) {
+function RaceBadge({ r }: { r: Runner }) {
   return (
     <span className="rounded-full bg-white/20 px-3 py-1 text-sm font-semibold whitespace-nowrap">
-      {r.race.code}
+      {r.raceCode}
       {r.bibNumber && ` · บิบ ${r.bibNumber}`}
     </span>
   );
@@ -268,7 +311,7 @@ function ResultCard({
 }) {
   switch (result.kind) {
     case "ready": {
-      const r = result.registration;
+      const r = result.runner;
       return (
         <form action={onConfirm} className="flex flex-col gap-3 rounded-[28px] bg-ok p-4 text-white">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -277,6 +320,7 @@ function ResultCard({
           </div>
           <RunnerTile r={r} />
           {r.emergencyName && <p className="text-sm">ผู้ติดต่อฉุกเฉิน: {r.emergencyName}</p>}
+          {result.offline && <p className="text-sm">ตรวจจากรายชื่อในเครื่อง (ออฟไลน์)</p>}
           <label className="flex flex-col gap-1 text-sm">
             รับแทนโดย (ถ้ามี)
             <input name="pickedUpBy" maxLength={120} autoComplete="off" placeholder="ชื่อผู้รับแทน" className={`${inputClass} text-base`} />
@@ -291,16 +335,17 @@ function ResultCard({
       );
     }
     case "done": {
-      const r = result.registration;
+      const r = result.runner;
       return (
         <div className="flex flex-col gap-3 rounded-[28px] bg-ok p-4 text-white">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-2xl font-bold">✓ บันทึกแล้ว</h2>
+            <h2 className="text-2xl font-bold">{result.queued ? "✓ บันทึกในเครื่องแล้ว" : "✓ บันทึกแล้ว"}</h2>
             <RaceBadge r={r} />
           </div>
           <p>
             {displayName(r)} รับเสื้อไซซ์ <b>{r.shirtSize ?? "–"}</b> และบิบแล้ว
           </p>
+          {result.queued && <p className="text-sm">ยังไม่ได้ส่งให้ระบบ จะส่งให้เองเมื่อกลับมาออนไลน์</p>}
           <button type="button" onClick={onNext} autoFocus className={`${nextButton} text-ok`}>
             สแกนคนต่อไป
           </button>
@@ -308,7 +353,7 @@ function ResultCard({
       );
     }
     case "picked_up": {
-      const r = result.registration;
+      const r = result.runner;
       return (
         <div className="flex flex-col gap-3 rounded-[28px] bg-bad p-4 text-white">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -319,6 +364,7 @@ function ResultCard({
             <b className="font-semibold">{displayName(r)}</b>
             <p className="text-sm">
               รับเมื่อ {r.kitPickedUpAt ? `${fmt.date(r.kitPickedUpAt)} ${fmt.time(r.kitPickedUpAt)}` : "–"}
+              {result.offline && " (ตามรายชื่อในเครื่อง)"}
             </p>
           </div>
           <p className="text-sm">ถ้านักวิ่งยืนยันว่ายังไม่ได้รับ ให้ส่งต่อหัวหน้าจุด</p>
@@ -329,7 +375,7 @@ function ResultCard({
       );
     }
     case "not_confirmed": {
-      const r = result.registration;
+      const r = result.runner;
       return (
         <div className="flex flex-col gap-3 rounded-[28px] bg-warn p-4 text-white">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -346,12 +392,30 @@ function ResultCard({
         </div>
       );
     }
+    case "refund_pending": {
+      const r = result.runner;
+      return (
+        <div className="flex flex-col gap-3 rounded-[28px] bg-warn p-4 text-white">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-2xl font-bold">มีคำขอคืนเงินค้างอยู่</h2>
+            <RaceBadge r={r} />
+          </div>
+          <RunnerTile r={r} />
+          <p className="text-sm">นักวิ่งขอคืนเงินไว้ ห้ามมอบของจนกว่าผู้จัดจะตอบคำขอ ส่งต่อหัวหน้าจุด</p>
+          <button type="button" onClick={onNext} autoFocus className={`${nextButton} text-warn`}>
+            สแกนคนต่อไป
+          </button>
+        </div>
+      );
+    }
     case "not_found":
       return (
         <div className="flex flex-col gap-3 rounded-[28px] bg-warn-soft p-4 text-warn">
-          <h2 className="text-2xl font-bold">ไม่พบ QR นี้</h2>
+          <h2 className="text-2xl font-bold">{result.offline ? "ไม่พบในรายชื่อในเครื่อง" : "ไม่พบ QR นี้"}</h2>
           <p className="text-sm break-all">
-            ไม่มีผู้สมัครในงานนี้ที่ตรงกับ “{result.code}” ตรวจว่าเป็นบัตรของงานนี้ หรือลองพิมพ์เลขบิบ
+            {result.offline
+              ? `ไม่มีผู้สมัครที่ชำระเงินแล้วตรงกับ “${result.code}” ในรายชื่อที่ดาวน์โหลดไว้ อาจยังไม่ชำระเงิน สมัครหลังดาวน์โหลด หรือเป็นบัตรของงานอื่น ห้ามมอบของ ตรวจอีกครั้งเมื่อกลับมาออนไลน์`
+              : `ไม่มีผู้สมัครในงานนี้ที่ตรงกับ “${result.code}” ตรวจว่าเป็นบัตรของงานนี้ หรือลองพิมพ์เลขบิบ`}
           </p>
           <button type="button" onClick={onNext} autoFocus className="min-h-14 w-full rounded-full bg-warn text-lg font-semibold text-white">
             สแกนใหม่
