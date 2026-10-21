@@ -81,6 +81,7 @@ test("an organiser adds a required question and the runner has to answer it", as
   await runner.getByLabel(/อีเมล \(รับใบเสร็จ\)/).fill("pim@example.com");
   await runner.getByLabel(/^เบอร์โทร/).last().fill("081-234-5678");
 
+  await runner.getByRole("checkbox", { name: /ยินยอมให้ส่งข้อมูลผู้วิ่ง/ }).check();
   await runner.getByRole("button", { name: "ไปชำระเงิน" }).click();
   const answer = runner.getByLabel(/เคยวิ่งฮาล์ฟมาราธอนไหม/);
   await expect(runner.locator("label").filter({ has: answer })).toContainText("จำเป็นต้องตอบ");

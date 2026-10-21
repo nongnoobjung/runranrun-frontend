@@ -42,6 +42,7 @@ test("a runner registers, pays with PromptPay and gets a ticket with a bib", asy
   await page.getByLabel(/อีเมล \(รับใบเสร็จ\)/).fill(email);
   await page.getByLabel(/^เบอร์โทร/).last().fill("081-234-5678");
   await page.getByLabel(/โค้ดส่วนลด/).fill("RUN10");
+  await page.getByRole("checkbox", { name: /ยินยอมให้ส่งข้อมูลผู้วิ่ง/ }).check();
   await page.getByRole("button", { name: "ไปชำระเงิน" }).click();
 
   await expect(page).toHaveURL(/\/orders\/.+\/pay/);

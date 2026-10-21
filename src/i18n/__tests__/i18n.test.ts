@@ -22,9 +22,9 @@ describe("dictionaries", () => {
     expect(shape(dictionary("en"))).toEqual(shape(dictionary("th")));
   });
 
-  it("have no empty strings, and no Thai left in English", () => {
-    const thai = /[฀-๿]/;
-    for (const s of texts(dictionary("th"))) expect(s.trim()).not.toBe("");
+  // Empty strings are allowed: some sentences are split around a bold value, and some notes show in one language only.
+  it("have no Thai left in English", () => {
+    const thai = /[\u0E00-\u0E7F]/;
     // The brand and the switch back to Thai are the only Thai on English pages.
     const allowed = new Set([dictionary("en").common.brand, dictionary("en").common.language.switchTo, dictionary("en").common.language.short]);
     const leftovers = texts(dictionary("en")).filter((s) => thai.test(s.replaceAll("฿", "")) && !allowed.has(s));

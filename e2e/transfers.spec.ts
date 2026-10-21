@@ -106,6 +106,7 @@ test("a runner hands their place to a friend, who takes it with their own detail
   await other.getByLabel(/เลขบัตร/).fill(idNumber());
   await other.getByLabel(/^ผู้ติดต่อฉุกเฉิน/).fill("แม่");
   await other.getByLabel(/เบอร์ผู้ติดต่อฉุกเฉิน/).fill("081-111-2222");
+  await other.getByRole("checkbox", { name: /ยินยอมให้ส่งข้อมูลผู้วิ่ง/ }).check();
   await other.getByRole("button", { name: "รับสิทธิ์", exact: true }).click();
   await expect(other.getByText("BIB NUMBER")).toBeVisible();
   await expect(other.locator("span.text-6xl")).toHaveText(bib!);

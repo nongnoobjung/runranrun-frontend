@@ -179,6 +179,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
   });
   const buyer = { name: get("buyer.name"), email: get("buyer.email"), phone: get("buyer.phone") };
   for (const [k, v] of Object.entries(buyer)) if (!v) fieldErrors[`buyer.${k}`] = t.required;
+  const consents = consentsOf(formData, fieldErrors, t);
   if (Object.keys(fieldErrors).length) return { error: t.completeCheckout, fieldErrors };
 
   // Hold the chosen shirt sizes first; a sold-out size comes back before the order is created.
@@ -193,7 +194,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
     if (!sizes.ok) return { error: problem(sizes.problem) };
   }
 
-  const body = { checkoutSessionId: sessionId, couponCode: get("coupon"), buyer, participants };
+  const body = { checkoutSessionId: sessionId, couponCode: get("coupon"), buyer, participants, consents };
   // Same form data → same key, so a double submit or a retry after a network error cannot create two orders.
   const key = createHash("sha256").update(JSON.stringify(body)).digest("hex").slice(0, 40);
   const res = await api<Order>("/v1/orders", { method: "POST", auth: true, body, idempotencyKey: `order-${key}` });
@@ -350,10 +351,11 @@ export async function acceptTransfer(transferId: string, _prev: FormState, formD
   const { t, problem, locale } = await inLocale();
   const fieldErrors: Record<string, string> = {};
   const runner = runnerOf(formData, 0, fieldErrors, t);
+  const consents = consentsOf(formData, fieldErrors, t);
   if (Object.keys(fieldErrors).length) return { error: t.completeAccept, fieldErrors };
   const res = await api<{ status: "completed"; registrationId: string } | { status: "pending_payment"; orderId: string }>(
     `/v1/me/transfers/${encodeURIComponent(transferId)}/accept`,
-    { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0), ...profileChoiceOf(formData, 0) } },
+    { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0), consents, ...profileChoiceOf(formData, 0) } },
   );
   if (!res.ok) return { error: problem(res.problem), fieldErrors: toFieldErrors(res.problem.errors, t) };
   if (res.data.status === "pending_payment") go(locale, `/orders/${res.data.orderId}/pay`);
@@ -416,4 +418,31 @@ export async function deleteProfile(profileId: string): Promise<void> {
   const { locale } = await inLocale();
   await api(`/v1/me/profiles/${encodeURIComponent(profileId)}`, { method: "DELETE", auth: true });
   go(locale, "/me/profiles");
+}
+
+/** The consents ticked on a registration form; the required one must be ticked before anything is sent. */
+function consentsOf(formData: FormData, fieldErrors: Record<string, string>, t: ActionText) {
+  if (formData.get("consent") !== "1") fieldErrors.consent = t.consentRequired;
+  return { terms: true, privacy: true, shareWithOrganizer: true, marketing: formData.get("marketing") === "1" };
+}
+
+// ---------------------------------------------------------------- privacy (PDPA)
+
+export async function setMarketingConsent(granted: boolean): Promise<void> {
+  const { locale } = await inLocale();
+  await api("/v1/me/consents", { method: "POST", auth: true, body: { purpose: "marketing", granted } });
+  go(locale, "/me/privacy");
+}
+
+/** Closes the account, signs out and goes home. */
+export async function closeAccount(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
+  if (formData.get("confirm") !== "1") return { error: t.confirmClose };
+  const res = await api("/v1/me", { method: "DELETE", auth: true, body: { confirm: true } });
+  if (!res.ok) {
+    if (res.status === 401) go(locale, "/login?next=/me/privacy");
+    return { error: problem(res.problem) };
+  }
+  await clearToken();
+  go(locale, "/?closed=1");
 }

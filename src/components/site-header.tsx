@@ -73,7 +73,9 @@ export async function SiteFooter() {
             {t.common.footer.results}
           </Link>
           <span>{t.common.footer.howTo}</span>
-          <span>{t.common.footer.refundPolicy}</span>
+          <Link href="/refund-policy" className="text-muted no-underline hover:text-ink">
+            {t.common.footer.refundPolicy}
+          </Link>
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">{t.common.footer.organizers}</b>
@@ -86,8 +88,12 @@ export async function SiteFooter() {
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">{t.common.footer.info}</b>
-          <span>{t.common.footer.privacy}</span>
-          <span>{t.common.footer.terms}</span>
+          <Link href="/privacy" className="text-muted no-underline hover:text-ink">
+            {t.common.footer.privacy}
+          </Link>
+          <Link href="/terms" className="text-muted no-underline hover:text-ink">
+            {t.common.footer.terms}
+          </Link>
         </div>
       </div>
     </footer>

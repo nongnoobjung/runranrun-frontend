@@ -24,6 +24,8 @@ export default defineDict({
     pickNewRace: "เลือกระยะที่จะเปลี่ยนไป",
     completeProfile: "กรอกข้อมูลให้ครบก่อนบันทึก",
     eventNotFound: "ไม่พบงานนี้",
+    consentRequired: "ติ๊กยอมรับก่อนสมัคร",
+    confirmClose: "ติ๊กยืนยันก่อนปิดบัญชี",
   },
   en: {
     emailInvalid: "Enter a valid email address",
@@ -47,5 +49,7 @@ export default defineDict({
     pickNewRace: "Choose the race to change to",
     completeProfile: "Fill in all the required fields to save",
     eventNotFound: "Event not found",
+    consentRequired: "Tick to agree before registering",
+    confirmClose: "Tick to confirm before closing your account",
   },
 });

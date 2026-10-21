@@ -46,6 +46,7 @@ test("a runner switches to English, finds an event and opens the checkout in Eng
   for (const label of [/^First name \(Thai\)/, /^Last name \(Thai\)/, /^Date of birth/, /^Emergency contact name/, /^Full name/, /^Email \(for receipt\)/]) {
     await expect(page.getByLabel(label)).toBeVisible();
   }
+  await expect(page.getByRole("checkbox", { name: /agree to my runners' details being sent to the organiser/ })).toBeVisible();
   await expectNoSideScroll(page);
   // Sending it empty: the Server Action answers in English too.
   await page.getByRole("button", { name: "Go to payment" }).click();
@@ -68,4 +69,20 @@ test("English pages that are not there show the not-found page in English", asyn
   expect(res?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Back to home" })).toHaveAttribute("href", "/en");
+});
+
+test("the legal pages in the English footer are in English, and say the Thai text applies", async ({ page }) => {
+  await page.goto("/en");
+  for (const [link, heading] of [
+    ["Privacy policy (PDPA)", "Privacy policy"],
+    ["Terms of use", "Terms of use"],
+    ["Refund policy", "Refund policy"],
+  ]) {
+    await page.getByRole("contentinfo").getByRole("link", { name: link }).click();
+    await expect(page).toHaveURL(/\/en\//);
+    await expect(page.getByRole("heading", { level: 1, name: heading })).toBeVisible();
+    await expect(page.getByText("the Thai version applies")).toBeVisible();
+    await expectNoSideScroll(page);
+    await page.goBack();
+  }
 });

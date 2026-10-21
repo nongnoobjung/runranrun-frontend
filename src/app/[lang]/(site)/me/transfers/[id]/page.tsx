@@ -67,6 +67,7 @@ async function Accept({ params }: Pick<Props, "params">) {
           questions={questions}
           note={ta.note(t.sender, t.shirtSize)}
           profiles={profiles.ok ? profiles.data.items : []}
+          organizer={event.organizer.name}
           submitLabel={t.feeSatang > 0 ? ta.submitFee(baht(t.feeSatang)) : ta.submit}
         />
       )}

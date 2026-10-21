@@ -32,6 +32,9 @@ export default async function MyEventsPage() {
             <Link href="/me/profiles" className="text-sm font-semibold">
               {t.me.events.profilesLink}
             </Link>
+            <Link href="/me/privacy" className="text-sm font-semibold">
+              {t.privacy.myEventsLink}
+            </Link>
           </span>
         </div>
         <form action={logout}>

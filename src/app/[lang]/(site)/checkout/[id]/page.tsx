@@ -71,6 +71,7 @@ async function Checkout({ params }: Pick<PageProps<"/[lang]/checkout/[id]">, "pa
       <CheckoutForm
         sessionId={session.id}
         eventName={localized(locale, event.name)}
+        organizer={event.organizer.name}
         expiresAt={session.expiresAt}
         slots={slots}
         sizes={sizes}

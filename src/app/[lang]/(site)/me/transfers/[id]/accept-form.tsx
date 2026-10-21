@@ -3,6 +3,7 @@
 import { useActionState, useTransition, type FormEvent } from "react";
 import { acceptTransfer, type FormState } from "@/app/actions";
 import { Questions } from "@/components/runner-fields";
+import { ConsentFields } from "@/components/consent-fields";
 import { SavedRunnerFields } from "@/components/saved-runner";
 import { buttonClass, ErrorNote } from "@/components/ui";
 import { useT } from "@/i18n/client";
@@ -15,12 +16,14 @@ export function AcceptForm({
   note,
   submitLabel,
   profiles,
+  organizer,
 }: {
   transferId: string;
   questions: FormQuestion[];
   note: string;
   submitLabel: string;
   profiles: RunnerProfile[];
+  organizer: string;
 }) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(acceptTransfer.bind(null, transferId), {});
   const [, startTransition] = useTransition();
@@ -43,6 +46,7 @@ export function AcceptForm({
         <SavedRunnerFields prefix="p0" err={err} profiles={profiles} initial={profiles.find((p) => p.isSelf)?.id} />
       </section>
       <Questions index={0} questions={questions} err={err} />
+      <ConsentFields organizer={organizer} error={err("consent")} />
       <ErrorNote message={state.error} />
       <button type="submit" disabled={pending} className={buttonClass}>
         {pending ? ta.accepting : submitLabel}
