@@ -19,6 +19,7 @@ import {
   type RegistrationStatus,
 } from "@/lib/org";
 import { SetBibForm } from "../bibs/bib-forms";
+import { CancelRegistrationForm } from "../requests/refund-forms";
 import { RevealId } from "./reveal-id";
 
 export const metadata: Metadata = { title: "ผู้สมัคร" };
@@ -218,6 +219,7 @@ async function Registrations({ params, searchParams }: Props) {
                 registrationId={f.selected}
                 showPii={showPii}
                 bibEventId={can(org.role, "manage_event") ? eventId : null}
+                cancel={can(org.role, "manage_refunds") ? { eventId, refundPercentBps: event.allowRefund ? event.refundPercentBps : 0 } : null}
                 closeHref={`${base}${query(f, { page: f.page })}`}
               />
             </Suspense>
@@ -376,6 +378,7 @@ async function DetailPanel({
   registrationId,
   showPii,
   bibEventId,
+  cancel,
   closeHref,
 }: {
   orgId: string;
@@ -383,6 +386,8 @@ async function DetailPanel({
   showPii: boolean;
   /** Set when the viewer may change bib numbers. */
   bibEventId: string | null;
+  /** Set when the viewer may cancel places; the policy share pre-fills the refund. */
+  cancel: { eventId: string; refundPercentBps: number } | null;
   closeHref: string;
 }) {
   const res = await api<RegistrationDetail>(`/v1/org/${orgId}/registrations/${encodeURIComponent(registrationId)}`, { auth: true });
@@ -464,6 +469,17 @@ async function DetailPanel({
           <SetBibForm key={r.id} orgId={orgId} eventId={bibEventId} registrationId={r.id} current={r.bibNumber} label={`เลขบิบของ ${displayName(r)}`} />
           <span className="text-[13px] text-muted">เว้นว่างแล้วบันทึก = ลบเลขเดิม</span>
         </div>
+      )}
+
+      {cancel && r.status === "confirmed" && (
+        <CancelRegistrationForm
+          key={r.id}
+          orgId={orgId}
+          eventId={cancel.eventId}
+          registrationId={r.id}
+          defaultRefund={Math.floor((r.pricePaidSatang * cancel.refundPercentBps) / 10_000)}
+          maxRefund={r.pricePaidSatang}
+        />
       )}
 
       <div className="flex flex-col gap-2">
