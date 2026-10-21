@@ -213,6 +213,26 @@ export interface PublicResults {
   total: number;
 }
 
+/** An event whose results are out, for the results index. */
+export interface ResultsEvent {
+  slug: string;
+  name: { th: string; en: string | null };
+  type: EventType;
+  eventDate: string;
+  province: string | null;
+  venue: string | null;
+  coverImageUrl: string | null;
+  publishedAt: string;
+  finishers: number;
+  races: { id: string; code: string; name: string; distanceKm: number; finishers: number }[];
+}
+
+/** One runner's result with its event and race, from the cross-event search or "my results". */
+export interface RunnerResult extends RaceResult {
+  event: { slug: string; name: string; eventDate: string };
+  race: { id: string; code: string; name: string; distanceKm: number };
+}
+
 /** The signed-in runner's place in a race's waitlist. */
 export interface WaitlistEntry {
   id: string;

@@ -1,4 +1,4 @@
-import type { QuestionType } from "./types";
+import type { QuestionType, ResultStatus } from "./types";
 
 /** Formats integer satang as baht: 120000 → "฿1,200", 110160 → "฿1,101.60". */
 export function baht(satang: number): string {
@@ -42,6 +42,8 @@ export function pace(secPerKm: number | null): string {
   if (!secPerKm) return "–";
   return `${Math.floor(secPerKm / 60)}:${String(secPerKm % 60).padStart(2, "0")} /กม.`;
 }
+
+export const RESULT_STATUS_TH: Record<ResultStatus, string> = { FIN: "เข้าเส้นชัย", DNF: "ไม่ถึงเส้นชัย", DNS: "ไม่ได้ออกตัว", DQ: "ตัดสิทธิ์" };
 
 export function distanceLabel(km: number): string {
   return `${km}K`;
@@ -137,6 +139,18 @@ const PROBLEM_TH: Record<string, string> = {
   QUEUE_TOKEN_EXPIRED: "หมดเวลาสมัครของรอบคิวคุณแล้ว เข้าคิวใหม่อีกครั้ง",
   QUEUE_UNAVAILABLE: "ระบบคิวไม่พร้อมใช้งานตอนนี้ ลองใหม่อีกครั้ง",
   WAITING_ROOM_UNAVAILABLE: "เซิร์ฟเวอร์นี้ยังเปิดระบบคิวไม่ได้ ติดต่อทีมงานก้าว",
+  // Organiser sign-up and KYC
+  TOO_MANY_PENDING_TEAMS: "คุณมีทีมที่รอตรวจเอกสารอยู่ 3 ทีมแล้ว ส่งเอกสารให้ครบก่อนเปิดทีมใหม่",
+  KYC_LOCKED: "ชื่อตามทะเบียนและเลขผู้เสียภาษีผ่านการตรวจแล้ว ติดต่อทีมงานก้าวหากต้องแก้",
+  UNSUPPORTED_FILE_TYPE: "รองรับเฉพาะไฟล์ PDF, JPG หรือ PNG",
+  UNSUPPORTED_MEDIA_TYPE: "รองรับเฉพาะไฟล์ PDF, JPG หรือ PNG",
+  FILE_TOO_LARGE: "ไฟล์ใหญ่เกิน 10 MB",
+  FILE_REQUIRED: "เลือกไฟล์ก่อน",
+  EMPTY_FILE: "ไฟล์ว่างเปล่า",
+  TOO_MANY_PARTS: "อัปโหลดได้ครั้งละหนึ่งไฟล์",
+  TOO_MANY_DOCUMENTS: "ทีมหนึ่งเก็บเอกสารได้ 20 ไฟล์ ลบไฟล์เก่าที่ไม่ใช้ก่อน",
+  DOCUMENT_APPROVED: "เอกสารที่ตรวจผ่านแล้วลบไม่ได้",
+  NO_BANK_SUBMISSION: "ผู้จัดยังไม่ได้ส่งบัญชีรับเงินมาให้ยืนยัน",
 };
 
 /** A Thai message for an API problem code, falling back to the API's own detail. */

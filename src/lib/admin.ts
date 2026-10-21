@@ -2,7 +2,7 @@ import "server-only";
 import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { api } from "./api";
-import type { OrgEvent } from "./org";
+import type { KycAddress, KycDocument, OrgEvent } from "./org";
 
 export type PlatformRole = "support" | "finance" | "admin" | "superadmin";
 export type AdminPermission = "view" | "review_events" | "manage_orgs" | "payouts";
@@ -52,6 +52,7 @@ export interface AdminOrgSummary {
   pendingReview: number;
   pendingDocs: number;
   bankVerified: boolean;
+  bankSubmitted: boolean;
 }
 
 export interface AdminOrg {
@@ -64,6 +65,8 @@ export interface AdminOrg {
   contactEmail: string | null;
   contactPhone: string | null;
   websiteUrl: string | null;
+  isVatRegistered: boolean;
+  address: KycAddress | null;
   status: OrgStatus;
   statusNote: string | null;
   reviewEvents: boolean;
@@ -71,8 +74,10 @@ export interface AdminOrg {
   kycApprovedBy: string | null;
   createdAt: string;
   members: { email: string; name: string | null; role: string; accepted: boolean }[];
-  documents: { id: string; type: string; fileUrl: string; status: string; rejectReason: string | null; createdAt: string }[];
+  documents: KycDocument[];
   bankAccount: { bankCode: string; accountName: string; accountLast4: string; branch: string | null; verified: boolean } | null;
+  /** Sent by the owner and not verified yet; the full number only for staff who may verify it. */
+  submittedBankAccount: { bankCode: string; accountName: string; accountLast4: string; accountNumber: string | null; branch: string | null; submittedAt: string } | null;
   events: { id: string; nameTh: string; status: string; eventDate: string }[];
 }
 

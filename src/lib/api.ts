@@ -9,6 +9,8 @@ export type ApiResult<T> = { ok: true; status: number; data: T } | { ok: false; 
 interface Options {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
+  /** A multipart body (file uploads); fetch sets the content type with its boundary. */
+  form?: FormData;
   auth?: boolean;
   idempotencyKey?: string;
   headers?: Record<string, string>;
@@ -42,7 +44,7 @@ export async function api<T>(path: string, opts: Options = {}): Promise<ApiResul
     res = await fetch(`${baseUrl()}${path}`, {
       method: opts.method ?? "GET",
       headers,
-      body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
+      body: opts.form ?? (opts.body === undefined ? undefined : JSON.stringify(opts.body)),
       cache: "no-store",
     });
   } catch {

@@ -36,7 +36,9 @@ export function SiteHeader() {
           <Link href="/events" className="font-semibold text-ink no-underline">
             หางานวิ่ง
           </Link>
-          <span className="text-muted" title="เร็ว ๆ นี้">ผลการแข่งขัน</span>
+          <Link href="/results" className="text-ink no-underline">
+            ผลการแข่งขัน
+          </Link>
           <Link href="/organizer" className="text-ink no-underline">
             สำหรับผู้จัดงาน
           </Link>
@@ -59,8 +61,20 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">นักวิ่ง</b>
+          <Link href="/results" className="text-muted no-underline hover:text-ink">
+            ผลการแข่งขัน
+          </Link>
           <span>วิธีสมัคร</span>
           <span>นโยบายคืนเงิน</span>
+        </div>
+        <div className="flex flex-[1_1_150px] flex-col gap-1.5">
+          <b className="text-ink">ผู้จัดงาน</b>
+          <Link href="/organizer/new" className="text-muted no-underline hover:text-ink">
+            เปิดทีมผู้จัดงาน
+          </Link>
+          <Link href="/organizer" className="text-muted no-underline hover:text-ink">
+            เข้าระบบผู้จัด
+          </Link>
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">ข้อมูล</b>
