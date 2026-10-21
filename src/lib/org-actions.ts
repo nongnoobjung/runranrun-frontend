@@ -41,6 +41,7 @@ const VALIDATION_DETAIL_TH: Record<string, string> = {
   "A percentage cannot exceed 100%": "ส่วนลดเกิน 100% ไม่ได้",
   "The CSV needs a bib column and chip_time, gun_time or status": "ไฟล์ต้องมีคอลัมน์ bib และ chip_time, gun_time หรือ status",
   "The CSV has no result rows": "ไฟล์ไม่มีแถวผล",
+  "Pick a time in the future": "เลือกเวลาในอนาคต",
   "The refund cannot be more than the runner paid": "คืนเงินเกินกว่าที่นักวิ่งจ่ายไม่ได้",
   "Give at least two choices": "ใส่ตัวเลือกอย่างน้อย 2 ข้อ (บรรทัดละข้อ)",
   "The minimum must not be above the maximum": "ค่าต่ำสุดต้องไม่มากกว่าค่าสูงสุด",
