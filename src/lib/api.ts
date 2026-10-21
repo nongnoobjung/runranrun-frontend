@@ -6,7 +6,7 @@ import type { ApiProblem } from "./types";
 export type ApiResult<T> = { ok: true; status: number; data: T } | { ok: false; status: number; problem: ApiProblem };
 
 interface Options {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   auth?: boolean;
   idempotencyKey?: string;
