@@ -82,17 +82,22 @@ export default async function Home() {
       </section>
 
       <div className="mx-auto flex max-w-[1240px] flex-col gap-14 px-4 pt-12 sm:px-7">
-        <section aria-label={t.home.stepsLabel} className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
-          {t.home.steps.map((s, i) => (
-            <div key={s.title} className="flex items-start gap-4">
-              <span className="grid h-11 w-11 flex-none place-items-center rounded-full bg-ice text-xl font-bold text-brand">{i + 1}</span>
-              <span className="leading-snug">
-                <b className="text-lg font-semibold">{s.title}</b>
-                <br />
-                <span className="text-[15px] text-muted">{s.text}</span>
-              </span>
-            </div>
-          ))}
+        <section aria-label={t.home.stepsLabel} className="flex flex-col gap-4">
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-4">
+            {t.home.steps.map((s, i) => (
+              <div key={s.title} className="flex items-start gap-4">
+                <span className="grid h-11 w-11 flex-none place-items-center rounded-full bg-ice text-xl font-bold text-brand">{i + 1}</span>
+                <span className="leading-snug">
+                  <b className="text-lg font-semibold">{s.title}</b>
+                  <br />
+                  <span className="text-[15px] text-muted">{s.text}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <Link href="/how-to-register" className="self-start text-[15px] font-semibold">
+            {t.home.howToLink}
+          </Link>
         </section>
 
         <section id="events" className="flex scroll-mt-6 flex-col gap-5">

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { Locale } from "@/i18n/config";
 import Link from "@/i18n/link";
 import { getLocale, getT } from "@/i18n/server";
-import { COMPANY, COMPANY_EN } from "@/lib/legal";
+import { COMPANY, COMPANY_EN, RETENTION } from "@/lib/legal";
 import { LegalPage } from "../legal-page";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -88,8 +88,24 @@ function PrivacyTh() {
           heading: "เราเก็บข้อมูลไว้นานเท่าไร",
           body: (
             <ul>
-              <li>บัญชีและผู้วิ่งที่บันทึกไว้: จนกว่าคุณจะลบหรือปิดบัญชี</li>
-              <li>ข้อมูลการสมัคร คำสั่งซื้อ และการชำระเงิน: ตามระยะเวลาที่กฎหมายบัญชีและภาษีกำหนด [ระบุระยะเวลา] แม้คุณปิดบัญชีแล้ว</li>
+              <li>
+                บัญชีและผู้วิ่งที่บันทึกไว้: จนกว่าคุณจะลบหรือปิดบัญชี หลังปิดบัญชี {RETENTION.closedAccountDays} วัน เราลบช่องทางเข้าสู่ระบบ ข้อความที่ส่งถึงคุณ
+                และข้อมูลในการสมัครข้อถัดไปโดยไม่รอครบระยะ
+              </li>
+              <li>
+                ข้อมูลผู้วิ่งในการสมัคร (เลขบัตรประชาชนหรือพาสปอร์ต วันเกิด กรุ๊ปเลือด ผู้ติดต่อฉุกเฉิน อีเมล เบอร์โทร และคำตอบคำถามของผู้จัด): ลบหลังวันสุดท้ายของงาน{" "}
+                {RETENTION.registrationDays} วัน วันเกิดเหลือแค่ปีเกิด ส่วนชื่อ เพศ สัญชาติ ระยะ เลขบิบ รุ่นอายุ ไซซ์เสื้อ และประวัติการรับของ เก็บไว้คู่กับผลการแข่งขัน
+              </li>
+              <li>คำสั่งซื้อที่ไม่ได้ชำระจนหมดเวลา และการโอนสิทธิ์ที่ไม่สำเร็จ: ลบข้อมูลที่กรอกไว้ทั้งหมดหลัง {RETENTION.unpaidDays} วัน</li>
+              <li>
+                คำสั่งซื้อและการชำระเงิน (ยอดเงิน ชื่อผู้ซื้อ และข้อมูลใบกำกับภาษี): ตามระยะเวลาที่กฎหมายบัญชีและภาษีกำหนด [ระบุระยะเวลา] แม้คุณปิดบัญชีแล้ว
+                ส่วนอีเมล เบอร์โทร และที่อยู่จัดส่งของผู้ซื้อลบพร้อมข้อมูลผู้วิ่งข้อก่อนหน้า
+              </li>
+              <li>บันทึกความยินยอมและบันทึกการเข้าถึงข้อมูล: เก็บไว้เป็นหลักฐาน [ระบุระยะเวลา]</li>
+              <li>
+                เอกสารยืนยันตัวตนของผู้จัดงาน (KYC): เอกสารที่ไม่ผ่านการตรวจ และเอกสารของการเปิดทีมที่ไม่ได้ทำต่อ ลบหลัง {RETENTION.kycDays} วัน
+                เอกสารที่ผ่านแล้วเก็บไว้ตลอดที่ใช้บริการ [ระบุระยะเวลาหลังเลิกใช้บริการ]
+              </li>
               <li>ผลการแข่งขัน: ตามที่ผู้จัดเผยแพร่</li>
             </ul>
           ),
@@ -206,8 +222,25 @@ function PrivacyEn() {
           heading: "How long we keep data",
           body: (
             <ul>
-              <li>Accounts and saved runners: until you delete them or close your account</li>
-              <li>Registrations, orders and payments: for the period required by accounting and tax law [state the period], even after you close your account</li>
+              <li>
+                Accounts and saved runners: until you delete them or close your account. {RETENTION.closedAccountDays} days after you close it, we delete its sign-in
+                methods, the messages sent to you, and the registration details in the next item without waiting for that period
+              </li>
+              <li>
+                Runner details in registrations (ID card or passport number, date of birth, blood type, emergency contact, email, phone and answers to the
+                organiser&rsquo;s questions): deleted {RETENTION.registrationDays} days after the event&rsquo;s last day, keeping only the year of birth. Name,
+                gender, nationality, race, bib, age group, shirt size and kit pickup stay with the results
+              </li>
+              <li>Unpaid orders that ran out of time, and transfers that were not completed: everything entered is deleted after {RETENTION.unpaidDays} days</li>
+              <li>
+                Orders and payments (amounts, buyer name and tax invoice details): for the period required by accounting and tax law [state the period], even after
+                you close your account. The buyer&rsquo;s email, phone and delivery address are deleted with the runner details above
+              </li>
+              <li>Consent records and records of access to personal data: kept as evidence [state the period]</li>
+              <li>
+                Organisers&rsquo; identity documents (KYC): documents that did not pass review, and those of a team sign-up that was not completed, are deleted
+                after {RETENTION.kycDays} days. Approved documents are kept while the organiser uses the platform [state the period after they stop]
+              </li>
               <li>Results: as published by the organiser</li>
             </ul>
           ),
