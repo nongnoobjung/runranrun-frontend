@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Card, dangerButtonClass, PageHeader, Pill, smallGhostButtonClass } from "@/components/backoffice";
-import { approveDocument, approveOrg, reactivateOrg, rejectDocument, setBankAccount, setReviewEvents, suspendOrg, verifyBankAccount } from "@/app/admin/actions";
-import { adminGet, adminMe, ORG_STATUS, type AdminOrg } from "@/lib/admin";
+import { approveDocument, approveOrg, clearOrgFee, reactivateOrg, rejectDocument, setBankAccount, setOrgFee, setReviewEvents, suspendOrg, verifyBankAccount } from "@/app/admin/actions";
+import { adminGet, adminMe, feeLabel, ORG_STATUS, type AdminOrg } from "@/lib/admin";
 import { fmt } from "@/lib/format";
 import { EVENT_STATUS, fileSize, KYC_DOC_STATUS, KYC_DOC_TYPE, type EventStatus } from "@/lib/org";
 import { BANKS } from "@/lib/types";
 import { ActionButton, TextActionForm } from "../../action-button";
+import { FeeForm } from "../../fee-form";
+import { FeeHistory } from "../../fee-history";
 import { BankForm } from "./bank-form";
 
 export const metadata: Metadata = { title: "ผู้จัดงาน" };
@@ -30,6 +32,7 @@ async function Organization({ params }: Pick<Props, "params">) {
   const { orgId } = await params;
   const [me, o] = await Promise.all([adminMe(), adminGet<AdminOrg>(`/organizations/${orgId}`, `/admin/organizations/${orgId}`)]);
   const manage = me.can.manage_orgs;
+  const fee = o.platformFee;
   const status = ORG_STATUS[o.status];
   const info: [string, React.ReactNode][] = [
     ["ชื่อนิติบุคคล", o.legalName ?? "–"],
@@ -47,7 +50,15 @@ async function Organization({ params }: Pick<Props, "params">) {
       <Link href="/admin/organizations" className="self-start text-sm font-semibold">
         ← ผู้จัดงาน
       </Link>
-      <PageHeader title={o.nameTh} eyebrow={<Pill label={status.label} className={status.className} />} />
+      <PageHeader
+        title={o.nameTh}
+        eyebrow={<Pill label={status.label} className={status.className} />}
+        actions={
+          <Link href={`/admin/audit?organizationId=${o.id}`} className={smallGhostButtonClass}>
+            ดูบันทึกการทำงาน
+          </Link>
+        }
+      />
       {o.statusNote && <p className="rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad">เหตุผลที่ระงับ: {o.statusNote}</p>}
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -141,6 +152,24 @@ async function Organization({ params }: Pick<Props, "params">) {
               </div>
             )}
             {manage && <BankForm action={setBankAccount.bind(null, o.id)} banks={Object.entries(BANKS)} />}
+          </Card>
+
+          <Card title="ค่าธรรมเนียมแพลตฟอร์ม">
+            <p className="text-sm">
+              คำสั่งซื้อใหม่: <b>{feeLabel(fee.current)}</b>
+              <span className="block text-[13px] text-muted">
+                {fee.current?.source === "organization" ? "อัตราเฉพาะของผู้จัดนี้" : "ใช้อัตรา default ของแพลตฟอร์ม"}
+              </span>
+            </p>
+            <FeeHistory rows={fee.history} label="อัตราของผู้จัดนี้" />
+            {me.can.fees && (
+              <div className="flex flex-col gap-3 border-t border-line pt-3">
+                <FeeForm action={setOrgFee.bind(null, o.id)} current={fee.current} submitLabel="ตั้งอัตราเฉพาะผู้จัดนี้" />
+                {fee.history.some((r) => r.state !== "ended") && (
+                  <ActionButton action={clearOrgFee.bind(null, o.id)} label="กลับไปใช้อัตรา default" className={smallGhostButtonClass} />
+                )}
+              </div>
+            )}
           </Card>
 
           <Card title="ทีมงาน">

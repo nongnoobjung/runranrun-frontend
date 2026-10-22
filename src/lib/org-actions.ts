@@ -49,6 +49,7 @@ const VALIDATION_DETAIL_TH: Record<string, string> = {
   "The CSV needs registration_no and bib columns": "ไฟล์ต้องมีคอลัมน์ registration_no และ bib",
   "The CSV has no rows with a bib number": "ไม่มีแถวไหนกรอกเลขบิบ",
   "Import at most 20,000 rows at a time": "นำเข้าได้ครั้งละไม่เกิน 20,000 แถว",
+  "effectiveFrom must not be in the past": "วันเริ่มมีผลต้องไม่อยู่ในอดีต",
 };
 
 /** Field messages the API sets itself (the rest are Zod's English defaults). */

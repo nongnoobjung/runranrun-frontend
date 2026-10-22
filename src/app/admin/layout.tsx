@@ -53,6 +53,9 @@ async function Nav() {
         { href: "/admin/reviews", label: "ตรวจงาน" },
         { href: "/admin/organizations", label: "ผู้จัดงาน" },
         ...(me.can.payouts ? [{ href: "/admin/payouts", label: "จ่ายเงินผู้จัด" }] : []),
+        ...(me.can.fees ? [{ href: "/admin/fees", label: "ค่าธรรมเนียม" }] : []),
+        { href: "/admin/users", label: "ผู้ใช้" },
+        { href: "/admin/audit", label: "บันทึกการทำงาน" },
       ]}
     />
   );
