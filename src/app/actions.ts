@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash, randomUUID } from "node:crypto";
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { localePath, type Locale } from "@/i18n/config";
@@ -451,10 +452,14 @@ function consentsOf(formData: FormData, fieldErrors: Record<string, string>, t: 
 
 // ---------------------------------------------------------------- privacy (PDPA)
 
+/** Refreshes the page in place rather than navigating, so the rest of the page (e.g. a ticked close-account box) keeps its state. */
 export async function setMarketingConsent(granted: boolean): Promise<void> {
-  const { locale } = await inLocale();
-  await api("/v1/me/consents", { method: "POST", auth: true, body: { purpose: "marketing", granted } });
-  go(locale, "/me/privacy");
+  const res = await api("/v1/me/consents", { method: "POST", auth: true, body: { purpose: "marketing", granted } });
+  if (!res.ok && res.status === 401) {
+    const { locale } = await inLocale();
+    go(locale, "/login?next=/me/privacy");
+  }
+  refresh();
 }
 
 /** Closes the account, signs out and goes home. */
