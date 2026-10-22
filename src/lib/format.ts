@@ -181,6 +181,13 @@ const PROBLEM_TH = {
   TOO_MANY_DOCUMENTS: "ทีมหนึ่งเก็บเอกสารได้ 20 ไฟล์ ลบไฟล์เก่าที่ไม่ใช้ก่อน",
   DOCUMENT_APPROVED: "เอกสารที่ตรวจผ่านแล้วลบไม่ได้",
   NO_BANK_SUBMISSION: "ผู้จัดยังไม่ได้ส่งบัญชีรับเงินมาให้ยืนยัน",
+  RECEIPT_NOT_AVAILABLE: "ใบเสร็จออกให้เมื่อชำระเงินแล้ว",
+  ORDER_REFUNDED: "คำสั่งซื้อนี้คืนเงินแล้ว จึงออกใบกำกับภาษีใหม่ไม่ได้",
+  TAX_INVOICE_EXISTS: "ออกใบกำกับภาษีให้คำสั่งซื้อนี้แล้ว หากต้องแก้ไขติดต่อผู้จัดงาน",
+  // Admin backoffice
+  NO_OWN_FEE: "ผู้จัดนี้ใช้อัตรา default อยู่แล้ว",
+  CANNOT_CHANGE_SELF: "เปลี่ยนบัญชีของตัวเองไม่ได้ ให้แอดมินคนอื่นทำ",
+  LAST_SUPERADMIN: "ต้องมีซูเปอร์แอดมินที่ใช้งานได้อย่างน้อยหนึ่งคน",
 };
 
 /** English for every code above: a missing one fails typecheck. */
@@ -271,6 +278,12 @@ const PROBLEM_EN: Record<keyof typeof PROBLEM_TH, string> = {
   TOO_MANY_DOCUMENTS: "A team can keep up to 20 documents. Delete old ones you no longer need first",
   DOCUMENT_APPROVED: "Approved documents cannot be deleted",
   NO_BANK_SUBMISSION: "The organiser has not sent a payout bank account to confirm yet",
+  RECEIPT_NOT_AVAILABLE: "The receipt is issued once the order is paid",
+  ORDER_REFUNDED: "This order has been refunded, so no new tax invoice can be issued",
+  TAX_INVOICE_EXISTS: "A tax invoice has already been issued for this order. Contact the organiser to correct it",
+  NO_OWN_FEE: "This organiser already uses the default rate",
+  CANNOT_CHANGE_SELF: "You cannot change your own account. Ask another admin",
+  LAST_SUPERADMIN: "The platform needs at least one active superadmin",
 };
 
 const PROBLEMS: Record<Locale, Record<string, string>> = { th: PROBLEM_TH, en: PROBLEM_EN };

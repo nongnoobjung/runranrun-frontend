@@ -50,3 +50,16 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Receipts print on A4 (app/[lang]/(site)/orders/[id]/receipt); the site's header and footer are print:hidden. */
+@media print {
+  @page {
+    size: A4;
+    margin: 14mm 16mm;
+  }
+  body {
+    background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
