@@ -72,7 +72,9 @@ export async function SiteFooter() {
           <Link href="/results" className="text-muted no-underline hover:text-ink">
             {t.common.footer.results}
           </Link>
-          <span>{t.common.footer.howTo}</span>
+          <Link href="/how-to-register" className="text-muted no-underline hover:text-ink">
+            {t.common.footer.howTo}
+          </Link>
           <Link href="/refund-policy" className="text-muted no-underline hover:text-ink">
             {t.common.footer.refundPolicy}
           </Link>

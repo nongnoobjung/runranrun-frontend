@@ -26,3 +26,18 @@ export function companyFor(locale: Locale): typeof COMPANY {
 /** Must match POLICY_VERSION in the API, which records it with every consent. */
 export const POLICY_VERSION = "2026-10-22";
 export const POLICY_DATE: Record<Locale, string> = { th: "22 ตุลาคม 2026", en: "22 October 2026" };
+
+/**
+ * How long personal data is kept, in days, as the privacy policy states it. Must match the API's RETENTION_* settings
+ * (GET /v1/admin/retention shows the values in force), which its nightly retention job applies.
+ */
+export const RETENTION = {
+  /** After an event's last day: runners' ID numbers, contact details, emergency contacts and answers are erased. */
+  registrationDays: 365,
+  /** After an unpaid order lapsed, or a transfer was not completed. */
+  unpaidDays: 30,
+  /** After an account was closed. */
+  closedAccountDays: 30,
+  /** A rejected KYC document, or the documents of an organiser sign-up that stopped. */
+  kycDays: 180,
+};

@@ -75,7 +75,7 @@ test("a runner agrees before registering, then manages their consents and data",
   expect(data.registrations).toEqual([expect.objectContaining({ first_name_en: "PDPA", event: expect.stringContaining("Riverside") })]);
 
   // A place for an upcoming race keeps the account open.
-  await closeAccount(page, () => expect(page.getByText("ยังมีงานที่สมัครไว้และยังไม่ถึงวันแข่ง")).toBeVisible({ timeout: 3_000 }));
+  await closeAccount(page, () => expect(page.getByRole("alert").filter({ hasText: "ยังมีงานที่สมัครไว้และยังไม่ถึงวันแข่ง" })).toBeVisible({ timeout: 3_000 }));
 });
 
 test("someone with nothing upcoming closes their account and is signed out", async ({ page }) => {
