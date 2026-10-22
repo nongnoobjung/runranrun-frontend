@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { ALL_AUDIENCES, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -20,7 +21,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published 10K of its own with two paid runners who gave their email. */
 async function eventWithRunners() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-news-${randomUUID().slice(0, 8)}`;
@@ -42,7 +43,7 @@ async function eventWithRunners() {
   });
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
   for (const name of ["มะลิ", "กุหลาบ"]) {
-    const { accessToken: runnerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-news-${randomUUID()}@example.com` } });
+    const { accessToken: runnerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-news-${randomUUID()}@example.com` } });
     const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token: runnerToken, body: { eventId: event.id, races: [{ raceId: races[0].id, quantity: 1 }] } });
     const order = await apiCall<{ id: string }>("/v1/orders", {
       token: runnerToken,
@@ -65,14 +66,12 @@ async function eventWithRunners() {
     await apiCall(`/v1/orders/${order.id}/payments`, { token: runnerToken, key: true, body: { method: "promptpay" } });
     await apiCall(`/v1/dev/orders/${order.id}/complete-payment`, { body: {} });
   }
-  return { path: `/organizer/${items[0].id}/events/${event.id}` };
+  return { path: `/${items[0].id}/events/${event.id}` };
 }
 
 test("an organiser writes a broadcast, tests it, sends it, and schedules another", async ({ page }) => {
   const ev = await eventWithRunners();
-  await page.goto(`/login?next=${encodeURIComponent(`${ev.path}/broadcasts`)}`);
-  await page.getByLabel("อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await signInOrganizer(page, ORGANIZER, `${ev.path}/broadcasts`);
   await expect(page.getByRole("heading", { level: 1, name: "ส่งข่าวถึงผู้สมัคร" })).toBeVisible();
 
   const composer = page.getByRole("region", { name: "เขียนข้อความ" });

@@ -7,6 +7,7 @@ import { can, EVENT_STATUS, eventPath, membership, orgEvent, type ReadinessKey }
 import { closeEvent, publishEvent, updateEvent } from "./actions";
 import { EventForm } from "./event-form";
 import { StatusActions } from "./status-actions";
+import { siteHref } from "@/lib/hosts";
 
 export const metadata: Metadata = { title: "ข้อมูลงาน" };
 
@@ -46,9 +47,9 @@ async function EditEvent({ params }: Pick<PageProps<"/organizer/[orgId]/events/[
           <>
             <Pill label={status.label} className={status.className} />
             {live && (
-              <Link href={`/events/${event.slug}`} target="_blank" className={smallGhostButtonClass}>
+              <a href={siteHref(`/events/${event.slug}`)} target="_blank" className={smallGhostButtonClass}>
                 ดูหน้างาน ↗
-              </Link>
+              </a>
             )}
           </>
         }

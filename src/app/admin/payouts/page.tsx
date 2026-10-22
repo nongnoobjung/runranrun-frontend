@@ -34,7 +34,7 @@ export default function PayoutsPage() {
 }
 
 async function Payouts() {
-  const { events, settlements } = await adminGet<AdminPayouts>("/payouts", "/admin/payouts");
+  const { events, settlements } = await adminGet<AdminPayouts>("/payouts", "/payouts");
   const toSettle = events.reduce((s, e) => s + Math.max(0, e.toSettleSatang), 0);
   return (
     <>
@@ -54,7 +54,7 @@ async function Payouts() {
                 <span className="flex min-w-0 flex-1 flex-col leading-snug">
                   <b className="font-semibold">{e.nameTh}</b>
                   <span className="text-[13px] text-muted">
-                    <Link href={`/admin/organizations/${e.organization.id}`}>{e.organization.nameTh}</Link> · {fmt.date(e.eventDate)} · ยอดสุทธิ {baht(e.netSatang)} · โอนแล้ว{" "}
+                    <Link href={`/organizations/${e.organization.id}`}>{e.organization.nameTh}</Link> · {fmt.date(e.eventDate)} · ยอดสุทธิ {baht(e.netSatang)} · โอนแล้ว{" "}
                     {baht(e.paidOutSatang)}
                   </span>
                   {!e.bankVerified && <span className="text-xs text-bad">ยังไม่มีบัญชีรับเงินที่ตรวจแล้ว</span>}

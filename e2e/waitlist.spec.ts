@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ALL_AUDIENCES, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -20,7 +21,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published event of its own whose only race has one place, already sold, with the waitlist on. */
 async function fullEvent() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-queue-${randomUUID().slice(0, 8)}`;
@@ -42,7 +43,7 @@ async function fullEvent() {
   });
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
 
-  const { accessToken: buyerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-q-${randomUUID()}@example.com` } });
+  const { accessToken: buyerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-q-${randomUUID()}@example.com` } });
   const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token: buyerToken, body: { eventId: event.id, races: [{ raceId: races[0].id, quantity: 1 }] } });
   const order = await apiCall<{ id: string; registrations: { id: string }[] }>("/v1/orders", {
     token: buyerToken,
@@ -63,7 +64,7 @@ async function fullEvent() {
   });
   await apiCall(`/v1/orders/${order.id}/payments`, { token: buyerToken, key: true, body: { method: "promptpay" } });
   await apiCall(`/v1/dev/orders/${order.id}/complete-payment`, { body: {} });
-  return { token, org, slug, eventId: event.id, registrationId: order.registrations[0].id, path: `/organizer/${items[0].id}/events/${event.id}` };
+  return { token, org, slug, eventId: event.id, registrationId: order.registrations[0].id, path: `/${items[0].id}/events/${event.id}` };
 }
 
 async function signIn(page: Page, email: string, next: string) {
@@ -86,7 +87,7 @@ test("a runner queues for a full race and takes the place when it frees up", asy
   // The organiser sees the queue; then the sold place is cancelled and offered to the runner at once.
   const theirs = await browser.newContext();
   const organiser = await theirs.newPage();
-  await signIn(organiser, ORGANIZER, `${ev.path}/waitlist`);
+  await signInOrganizer(organiser, ORGANIZER, `${ev.path}/waitlist`);
   await expect(organiser.getByRole("list", { name: "คิว 5K" })).toContainText("รอคิว");
   await apiCall(`${ev.org}/events/${ev.eventId}/registrations/${ev.registrationId}/cancel`, { token: ev.token, body: { refundSatang: 0, reason: "ยกเลิกเอง" } });
 

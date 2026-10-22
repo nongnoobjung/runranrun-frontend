@@ -37,7 +37,7 @@ export async function sendTest(orgId: string, eventId: string, id: string): Prom
 export async function sendBroadcast(orgId: string, eventId: string, id: string, scheduledAt: string | null): Promise<OrgFormState> {
   const res = await orgMutation<Broadcast>(orgId, `${base(eventId)}/${id}/send`, "POST", { scheduledAt });
   if (!res.ok) return res.state;
-  redirect(`/organizer/${orgId}/events/${eventId}/broadcasts?sent=${res.data.status}`);
+  redirect(`/${orgId}/events/${eventId}/broadcasts?sent=${res.data.status}`);
 }
 
 export async function unschedule(orgId: string, eventId: string, id: string): Promise<void> {

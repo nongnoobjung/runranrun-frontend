@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { ALL_AUDIENCES, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -20,7 +21,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published event of its own whose 10K race has no bib range yet, so paid runners wait for a number. */
 async function freshEvent() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-bibs-${randomUUID().slice(0, 8)}`;
@@ -41,12 +42,12 @@ async function freshEvent() {
     body: { name: "ปกติ", priceSatang: 50_000, startsAt: new Date(now - 86_400_000).toISOString(), endsAt: new Date(now + 30 * 86_400_000).toISOString() },
   });
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
-  return { token, orgId: items[0].id, eventId: event.id, raceId: races[0].id, org, path: `/organizer/${items[0].id}/events/${event.id}` };
+  return { token, orgId: items[0].id, eventId: event.id, raceId: races[0].id, org, path: `/${items[0].id}/events/${event.id}` };
 }
 
 /** Registers and pays for one place straight through the API; returns the registration number. */
 async function paidRunner(ev: Awaited<ReturnType<typeof freshEvent>>, firstNameEn: string): Promise<string> {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-bib-${randomUUID()}@example.com` } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-bib-${randomUUID()}@example.com` } });
   const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token, body: { eventId: ev.eventId, races: [{ raceId: ev.raceId, quantity: 1 }] } });
   const order = await apiCall<{ id: string; registrations: { registrationNo: string }[] }>("/v1/orders", {
     token,
@@ -80,9 +81,7 @@ test("an organiser numbers waiting runners by hand, in bulk and from a CSV", asy
   const ann = await paidRunner(ev, "Ann");
   const ben = await paidRunner(ev, "Ben");
 
-  await page.goto(`/login?next=${encodeURIComponent(`${ev.path}/bibs`)}`);
-  await page.getByLabel("อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await signInOrganizer(page, ORGANIZER, `${ev.path}/bibs`);
   await expect(page.getByRole("heading", { level: 1, name: "บิบ" })).toBeVisible();
   const waiting = page.getByRole("list", { name: "รอออกบิบ" });
   await expect(waiting.getByRole("listitem")).toHaveCount(2);

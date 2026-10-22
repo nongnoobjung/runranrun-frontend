@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ALL_AUDIENCES, orgURL, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -27,7 +28,7 @@ interface SeededEvent {
 
 /** Registers and pays for one 10K place on the seeded event straight through the API. */
 async function paidRunner(firstNameTh: string): Promise<string> {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-runner-${randomUUID()}@example.com` } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-runner-${randomUUID()}@example.com` } });
   const event = await apiCall<SeededEvent>(`/v1/events/${SEEDED_EVENT}`);
   const race = event.races.find((r) => r.code === "10K")!;
   const shirt = event.products.find((p) => p.type === "shirt")!.variants.find((v) => v.label === "M")!;
@@ -59,12 +60,10 @@ async function paidRunner(firstNameTh: string): Promise<string> {
   return order.registrations[0].registrationNo;
 }
 
-/** Signs in through the login page and lands on the organisation's event list. */
+/** Signs in on the organiser backoffice and lands on the organisation's event list. */
 async function signInAsOrganizer(page: Page) {
-  await page.goto("/login?next=/organizer");
-  await page.getByLabel("อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
-  await expect(page).toHaveURL(/\/organizer\/[0-9a-f-]{36}$/);
+  await signInOrganizer(page, ORGANIZER);
+  await expect(page).toHaveURL(orgURL("/[0-9a-f-]{36}$"));
   await expect(page.getByRole("heading", { name: "งานทั้งหมด" })).toBeVisible();
 }
 

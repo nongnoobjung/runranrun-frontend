@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { ALL_AUDIENCES, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -20,7 +21,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published 10K of its own with two paid runners, so results never touch the seeded event. */
 async function raceWithRunners() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-results-${randomUUID().slice(0, 8)}`;
@@ -44,7 +45,7 @@ async function raceWithRunners() {
 
   const bibs: string[] = [];
   for (const [th, en] of [["ฟ้า", "Fah"], ["ฝน", "Fon"]]) {
-    const { accessToken: runnerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-res-${randomUUID()}@example.com` } });
+    const { accessToken: runnerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-res-${randomUUID()}@example.com` } });
     const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token: runnerToken, body: { eventId: event.id, races: [{ raceId: races[0].id, quantity: 1 }] } });
     const order = await apiCall<{ id: string }>("/v1/orders", {
       token: runnerToken,
@@ -69,16 +70,14 @@ async function raceWithRunners() {
     const regs = await apiCall<{ items: { bibNumber: string }[] }>("/v1/me/registrations", { token: runnerToken });
     bibs.push(regs.items[0].bibNumber);
   }
-  return { slug, path: `/organizer/${items[0].id}/events/${event.id}`, bibs };
+  return { slug, path: `/${items[0].id}/events/${event.id}`, bibs };
 }
 
 test("an organiser imports and publishes results, and runners find theirs", async ({ page }) => {
   const ev = await raceWithRunners();
   const [fah, fon] = ev.bibs;
 
-  await page.goto(`/login?next=${encodeURIComponent(`${ev.path}/results`)}`);
-  await page.getByLabel("อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await signInOrganizer(page, ORGANIZER, `${ev.path}/results`);
   await expect(page.getByRole("heading", { level: 1, name: "ผลการแข่งขัน" })).toBeVisible();
   await expect(page.getByText("ยังไม่ได้นำเข้าผล")).toBeVisible();
 

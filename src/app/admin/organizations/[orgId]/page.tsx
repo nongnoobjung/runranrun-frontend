@@ -30,7 +30,7 @@ export default function OrganizationPage({ params }: Props) {
 
 async function Organization({ params }: Pick<Props, "params">) {
   const { orgId } = await params;
-  const [me, o] = await Promise.all([adminMe(), adminGet<AdminOrg>(`/organizations/${orgId}`, `/admin/organizations/${orgId}`)]);
+  const [me, o] = await Promise.all([adminMe(), adminGet<AdminOrg>(`/organizations/${orgId}`, `/organizations/${orgId}`)]);
   const manage = me.can.manage_orgs;
   const fee = o.platformFee;
   const status = ORG_STATUS[o.status];
@@ -47,14 +47,14 @@ async function Organization({ params }: Pick<Props, "params">) {
 
   return (
     <>
-      <Link href="/admin/organizations" className="self-start text-sm font-semibold">
+      <Link href="/organizations" className="self-start text-sm font-semibold">
         ← ผู้จัดงาน
       </Link>
       <PageHeader
         title={o.nameTh}
         eyebrow={<Pill label={status.label} className={status.className} />}
         actions={
-          <Link href={`/admin/audit?organizationId=${o.id}`} className={smallGhostButtonClass}>
+          <Link href={`/audit?organizationId=${o.id}`} className={smallGhostButtonClass}>
             ดูบันทึกการทำงาน
           </Link>
         }
@@ -85,7 +85,7 @@ async function Organization({ params }: Pick<Props, "params">) {
                     <li key={d.id} className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="flex min-w-0 flex-1 basis-56 flex-col text-sm leading-snug">
-                          <a href={`/admin/organizations/${o.id}/documents/${d.id}`} target="_blank" rel="noreferrer" className="font-semibold">
+                          <a href={`/organizations/${o.id}/documents/${d.id}`} target="_blank" rel="noreferrer" className="font-semibold">
                             {KYC_DOC_TYPE[d.type]}
                           </a>
                           <span className="truncate text-[13px] text-muted">
@@ -195,7 +195,7 @@ async function Organization({ params }: Pick<Props, "params">) {
                   const s = EVENT_STATUS[e.status as EventStatus];
                   return (
                     <li key={e.id} className="flex flex-wrap items-center gap-2">
-                      {e.status === "pending_review" ? <Link href={`/admin/reviews/${e.id}`}>{e.nameTh}</Link> : <span>{e.nameTh}</span>}
+                      {e.status === "pending_review" ? <Link href={`/reviews/${e.id}`}>{e.nameTh}</Link> : <span>{e.nameTh}</span>}
                       <span className="text-muted">{fmt.date(e.eventDate)}</span>
                       {s && <Pill label={s.label} className={s.className} />}
                     </li>

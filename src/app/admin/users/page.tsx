@@ -53,12 +53,12 @@ async function Users({ searchParams }: Pick<Props, "searchParams">) {
   const status = STATUSES.some(([s]) => s === value("status")) ? value("status") : "all";
   const role = ROLES.some(([r]) => r === value("role")) ? value("role") : "all";
   const query = new URLSearchParams({ status, role, ...(q ? { q } : {}) });
-  const { items } = await adminGet<{ items: AdminUserSummary[] }>(`/users?${query}`, `/admin/users?${query}`);
+  const { items } = await adminGet<{ items: AdminUserSummary[] }>(`/users?${query}`, `/users?${query}`);
 
   return (
     <>
       <PageHeader title="ผู้ใช้" eyebrow="ค้นหาด้วยอีเมลหรือชื่อ" />
-      <form action="/admin/users" role="search" className="flex flex-col gap-3 rounded-[28px] bg-white p-5">
+      <form action="/users" role="search" className="flex flex-col gap-3 rounded-[28px] bg-white p-5">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="อีเมลหรือชื่อ">
             <input name="q" type="search" defaultValue={q} placeholder="เช่น somchai@" className={`${inputClass} min-h-10`} />
@@ -98,7 +98,7 @@ async function Users({ searchParams }: Pick<Props, "searchParams">) {
             {items.map((u) => (
               <li key={u.id}>
                 <Link
-                  href={`/admin/users/${u.id}`}
+                  href={`/users/${u.id}`}
                   className="flex flex-wrap items-center gap-3 rounded-[20px] bg-white px-4 py-3 text-ink no-underline hover:ring-2 hover:ring-brand"
                 >
                   <span className="flex min-w-0 flex-1 basis-56 flex-col leading-snug">

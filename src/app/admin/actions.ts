@@ -9,7 +9,7 @@ import { problemState, type OrgFormState } from "@/lib/org-actions";
 async function adminMutation(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown): Promise<OrgFormState | null> {
   const res = await api(`/v1/admin${path}`, { method, body, auth: true });
   if (!res.ok) {
-    if (res.status === 401) redirect("/login?next=/admin");
+    if (res.status === 401) redirect("/login?next=/");
     return problemState(res.problem);
   }
   refresh();
@@ -21,7 +21,7 @@ const text = (fd: FormData, name: string) => String(fd.get(name) ?? "").trim();
 export async function approveEvent(eventId: string): Promise<OrgFormState> {
   const failed = await adminMutation(`/events/${eventId}/approve`, "POST");
   if (failed) return failed;
-  redirect("/admin/reviews?approved=1");
+  redirect("/reviews?approved=1");
 }
 
 export async function rejectEvent(eventId: string, _prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
@@ -29,7 +29,7 @@ export async function rejectEvent(eventId: string, _prev: OrgFormState, fd: Form
   if (!note) return { fieldErrors: { note: "บอกผู้จัดว่าต้องแก้อะไร" } };
   const failed = await adminMutation(`/events/${eventId}/reject`, "POST", { note });
   if (failed) return failed;
-  redirect("/admin/reviews?rejected=1");
+  redirect("/reviews?rejected=1");
 }
 
 export async function approveOrg(orgId: string): Promise<OrgFormState> {

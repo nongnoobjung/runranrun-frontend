@@ -10,7 +10,7 @@ import { actionLocale } from "@/i18n/server";
 import { api } from "@/lib/api";
 import { billingOf } from "@/lib/billing";
 import { problemMessage } from "@/lib/format";
-import { clearQueueToken, clearToken, getQueueToken, getToken, setQueueToken, setToken } from "@/lib/session";
+import { clearQueueToken, clearToken, currentArea, getQueueToken, getToken, setQueueToken, setToken } from "@/lib/session";
 import type { ApiProblem, CheckoutSession, Order, Payment, QueueStatus } from "@/lib/types";
 
 export interface FormState {
@@ -53,17 +53,35 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   const email = z.string().trim().email().safeParse(formData.get("email"));
   if (!email.success) return { fieldErrors: { email: t.emailInvalid } };
   // Temporary: the API's development login. LINE Login / OTP replace this.
-  const res = await api<{ accessToken: string; expiresIn: number }>("/v1/dev/login", { method: "POST", body: { email: email.data } });
+  const res = await api<{ accessToken: string; expiresIn: number }>("/v1/dev/login", { method: "POST", body: { email: email.data, audience: "site" } });
   if (!res.ok) return { error: problem(res.problem) };
   await setToken(res.data.accessToken, res.data.expiresIn);
   await rememberLocale(locale, res.data.accessToken);
   go(locale, safeNext(formData.get("next")));
 }
 
+/**
+ * Sign-in on the organiser backoffice or admin domain. The token is issued for that front only (the API refuses it
+ * elsewhere), and the cookie stays on that domain. The backoffices are Thai.
+ */
+export async function backofficeLogin(_prev: FormState, formData: FormData): Promise<FormState> {
+  const area = await currentArea();
+  if (area === "site") return { error: "เข้าสู่ระบบหลังบ้านได้จากโดเมนของหลังบ้านเท่านั้น" };
+  const t = dictionary("th").actions;
+  const email = z.string().trim().email().safeParse(formData.get("email"));
+  if (!email.success) return { fieldErrors: { email: t.emailInvalid } };
+  // Temporary: the API's development login. LINE Login / OTP (and, for admin, a second factor) replace this.
+  const res = await api<{ accessToken: string; expiresIn: number }>("/v1/dev/login", { method: "POST", body: { email: email.data, audience: area } });
+  if (!res.ok) return { error: problemMessage(res.problem, "th") };
+  await setToken(res.data.accessToken, res.data.expiresIn);
+  redirect(safeNext(formData.get("next")));
+}
+
 export async function logout(): Promise<void> {
-  const { locale } = await inLocale();
+  const area = await currentArea();
   await clearToken();
-  go(locale, "/");
+  if (area !== "site") redirect("/login");
+  go((await inLocale()).locale, "/");
 }
 
 // ---------------------------------------------------------------- checkout

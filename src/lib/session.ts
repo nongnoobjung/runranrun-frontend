@@ -1,15 +1,30 @@
 import "server-only";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { areaOfHost, type Area } from "./hosts";
 
-export const SESSION_COOKIE = "kao_session";
+/**
+ * Each front signs in on its own domain and keeps its own cookie (host-only, so never sent to the other domains).
+ * The names differ too, so the sessions stay apart even if two fronts ever share a host.
+ */
+const SESSION_COOKIES: Record<Area, string> = { site: "kao_session", organizer: "kao_org_session", admin: "kao_admin_session" };
+
+/** The front this request is for. */
+export async function currentArea(): Promise<Area> {
+  const h = await headers();
+  return areaOfHost(h.get("x-forwarded-host") ?? h.get("host"));
+}
+
+async function sessionCookie(): Promise<string> {
+  return SESSION_COOKIES[await currentArea()];
+}
 
 export async function getToken(): Promise<string | undefined> {
-  return (await cookies()).get(SESSION_COOKIE)?.value;
+  return (await cookies()).get(await sessionCookie())?.value;
 }
 
 /** Only callable from Server Actions / Route Handlers. */
 export async function setToken(token: string, maxAgeSeconds: number): Promise<void> {
-  (await cookies()).set(SESSION_COOKIE, token, {
+  (await cookies()).set(await sessionCookie(), token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -19,7 +34,7 @@ export async function setToken(token: string, maxAgeSeconds: number): Promise<vo
 }
 
 export async function clearToken(): Promise<void> {
-  (await cookies()).delete(SESSION_COOKIE);
+  (await cookies()).delete(await sessionCookie());
 }
 
 /** The waiting room's admission for one event, kept until it runs out; the API checks it again at checkout. */

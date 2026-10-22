@@ -289,7 +289,7 @@ export const ORG_STATUS: Record<OrgStatus, { label: string; className: string }>
 };
 
 /** GET under /v1/admin. Signed-out people go to the login page; anyone who is not platform staff gets a 404. */
-export async function adminGet<T>(path: string, next = "/admin"): Promise<T> {
+export async function adminGet<T>(path: string, next = "/"): Promise<T> {
   const res = await api<T>(`/v1/admin${path}`, { auth: true });
   if (res.ok) return res.data;
   if (res.status === 401) redirect(`/login?next=${encodeURIComponent(next)}`);

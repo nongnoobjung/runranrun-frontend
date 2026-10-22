@@ -160,7 +160,7 @@ export function useOfflineCheckin(orgId: string, eventId: string) {
   useEffect(() => {
     if (process.env.NODE_ENV !== "production" || !("serviceWorker" in navigator)) return;
     navigator.serviceWorker
-      .register("/checkin-sw.js", { scope: "/organizer/" })
+      .register("/checkin-sw.js", { scope: "/" })
       .then(() => navigator.serviceWorker.ready)
       .then((reg) => {
         const assets = performance

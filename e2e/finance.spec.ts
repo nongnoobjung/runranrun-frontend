@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { ALL_AUDIENCES, ORG, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -20,7 +21,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published ฿500 10K of its own, so the money on it is only what this test puts there. */
 async function freshEvent() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-finance-${randomUUID().slice(0, 8)}`;
@@ -41,12 +42,12 @@ async function freshEvent() {
     body: { name: "ปกติ", priceSatang: 50_000, startsAt: new Date(now - 86_400_000).toISOString(), endsAt: new Date(now + 30 * 86_400_000).toISOString() },
   });
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
-  return { eventId: event.id, raceId: races[0].id, path: `/organizer/${items[0].id}/events/${event.id}` };
+  return { eventId: event.id, raceId: races[0].id, path: `/${items[0].id}/events/${event.id}` };
 }
 
 /** One order for one place; paid unless `pay` is false. Returns the order number. */
 async function order(ev: Awaited<ReturnType<typeof freshEvent>>, pay: boolean): Promise<string> {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-fin-${randomUUID()}@example.com` } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-fin-${randomUUID()}@example.com` } });
   const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token, body: { eventId: ev.eventId, races: [{ raceId: ev.raceId, quantity: 1 }] } });
   const created = await apiCall<{ id: string; orderNo: string }>("/v1/orders", {
     token,
@@ -77,9 +78,7 @@ test("an organiser sees the event's money, its transactions and exports them", a
   const paid = await order(ev, true);
   const pending = await order(ev, false);
 
-  await page.goto(`/login?next=${encodeURIComponent(`${ev.path}/finance`)}`);
-  await page.getByLabel("อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await signInOrganizer(page, ORGANIZER, `${ev.path}/finance`);
   await expect(page.getByRole("heading", { level: 1, name: "การเงิน" })).toBeVisible();
 
   const kpis = page.getByRole("region", { name: "สรุปยอด" });
@@ -95,7 +94,7 @@ test("an organiser sees the event's money, its transactions and exports them", a
   await expect(rows.filter({ hasText: paid })).toHaveCount(0);
   await expect(page.getByText("แสดง 1 จาก 1 ธุรกรรม")).toBeVisible();
 
-  const csv = await page.request.get(`${ev.path}/finance/export`);
+  const csv = await page.request.get(`${ORG}${ev.path}/finance/export`);
   expect(csv.headers()["content-type"]).toContain("text/csv");
   const text = await csv.text();
   expect(text).toContain("order_no,status,created_at");

@@ -1,19 +1,14 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { ORG, orgURL, signInAdmin, signInOrganizer } from "./hosts";
 
 /** Seeded by the API's `pnpm db:seed` as a platform superadmin. */
-const ADMIN = "admin@kao.example";
+const ADMIN_EMAIL = "admin@kao.example";
 const PDF = join(__dirname, "fixtures", "kyc-sample.pdf");
 
 // With Cache Components the previous route stays in the DOM (hidden), so only match what is on screen.
 const label = (page: Page, text: string | RegExp) => page.getByLabel(text).filter({ visible: true });
-
-async function signIn(page: Page, email: string, next: string) {
-  await page.goto(`/login?next=${encodeURIComponent(next)}`);
-  await label(page, "อีเมล").fill(email);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
-}
 
 const docRow = (page: Page, list: string, type: string) =>
   page.getByRole("list", { name: list }).getByRole("listitem").filter({ hasText: type }).filter({ visible: true });
@@ -22,16 +17,16 @@ test("a runner opens an organiser team, sends KYC, and the admin approves it", a
   const tag = randomUUID().slice(0, 6);
   const teamName = `ทีมสมัครเอง ${tag}`;
 
-  // 1. Sign up: a new account has no team yet and is offered to open one.
-  await signIn(page, `e2e-kyc-${tag}@example.com`, "/organizer");
+  // 1. Sign up on the organiser backoffice: a new account has no team yet and is offered to open one.
+  await signInOrganizer(page, `e2e-kyc-${tag}@example.com`);
   await expect(page.getByText("บัญชีนี้ยังไม่ได้อยู่ในทีมผู้จัดงาน")).toBeVisible();
   await page.getByRole("link", { name: "เปิดทีมผู้จัดงาน" }).filter({ visible: true }).click();
   await expect(page.getByRole("heading", { name: "เปิดทีมผู้จัดงาน" })).toBeVisible();
   await label(page, "ชื่อทีมผู้จัด (ภาษาไทย)").fill(teamName);
   await label(page, "อีเมลติดต่อ").fill(`team-${tag}@example.com`);
   await page.getByRole("button", { name: "เปิดทีมแล้วไปส่งเอกสาร" }).click();
-  await expect(page).toHaveURL(/\/organizer\/[0-9a-f-]{36}\/kyc\?new=1$/);
-  const orgId = page.url().match(/organizer\/([0-9a-f-]{36})/)![1];
+  await expect(page).toHaveURL(orgURL("/[0-9a-f-]{36}/kyc\\?new=1$"));
+  const orgId = new URL(page.url()).pathname.split("/")[1];
   await expect(page.getByRole("status").filter({ hasText: `เปิดทีม ${teamName} แล้ว` })).toBeVisible();
   await expect(page.getByText("รอตรวจเอกสาร", { exact: true })).toBeVisible();
 
@@ -58,7 +53,7 @@ test("a runner opens an organiser team, sends KYC, and the admin approves it", a
     await expect(docRow(page, "เอกสารที่ส่งแล้ว", type)).toContainText("รอตรวจ");
   }
   const href = await docRow(page, "เอกสารที่ส่งแล้ว", "หน้าสมุดบัญชี").getByRole("link").getAttribute("href");
-  const file = await page.request.get(href!);
+  const file = await page.request.get(new URL(href!, page.url()).href);
   expect(file.status()).toBe(200);
   expect(file.headers()["content-type"]).toBe("application/pdf");
   expect(file.headers()["cache-control"]).toContain("no-store");
@@ -73,14 +68,14 @@ test("a runner opens an organiser team, sends KYC, and the admin approves it", a
   // 4. The admin sends the bank book back once, then approves the documents, the account and the team.
   const adminContext = await browser.newContext();
   const admin = await adminContext.newPage();
-  await signIn(admin, ADMIN, `/admin/organizations/${orgId}`);
+  await signInAdmin(admin, ADMIN_EMAIL, `/organizations/${orgId}`);
   await expect(admin.getByRole("heading", { name: teamName })).toBeVisible();
   const book = docRow(admin, "เอกสาร KYC", "หน้าสมุดบัญชี");
   await book.getByLabel(/ไม่ผ่าน เพราะ/).fill("ภาพไม่ชัด");
   await book.getByRole("button", { name: "ส่งกลับให้แก้" }).click();
   await expect(book).toContainText("เหตุผล: ภาพไม่ชัด");
 
-  await page.goto(`/organizer/${orgId}`);
+  await page.goto(`${ORG}/${orgId}`);
   await expect(page.getByText("หน้าสมุดบัญชี: ภาพไม่ชัด")).toBeVisible();
 
   await book.getByRole("button", { name: "เอกสารผ่าน" }).click();
@@ -97,11 +92,11 @@ test("a runner opens an organiser team, sends KYC, and the admin approves it", a
   await adminContext.close();
 
   // 5. The team is through: no more KYC notice, and the legal details are locked.
-  await page.goto(`/organizer/${orgId}/kyc`);
+  await page.goto(`${ORG}/${orgId}/kyc`);
   await expect(page.getByText("ผ่าน KYC แล้ว")).toBeVisible();
   await expect(label(page, "เลขประจำตัวผู้เสียภาษี")).toBeDisabled();
   await expect(docRow(page, "เอกสารที่ส่งแล้ว", "หน้าสมุดบัญชี")).toContainText("ผ่าน");
-  await page.goto(`/organizer/${orgId}`);
+  await page.goto(`${ORG}/${orgId}`);
   await expect(page.getByRole("heading", { name: "งานทั้งหมด" })).toBeVisible();
   await expect(page.getByText(/ยังรอตรวจเอกสาร/)).toHaveCount(0);
 });

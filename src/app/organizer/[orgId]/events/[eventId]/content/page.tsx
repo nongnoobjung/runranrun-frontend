@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader, smallGhostButtonClass } from "@/components/backoffice";
 import { can, membership, orgEvent } from "@/lib/org";
 import { updateContent, uploadImage } from "./actions";
 import { ContentForm } from "./content-form";
 import { EventImages } from "./images";
+import { siteHref } from "@/lib/hosts";
 
 export const metadata: Metadata = { title: "เนื้อหาและรูปภาพ" };
 
@@ -32,12 +32,12 @@ async function EventContent({ params }: Pick<PageProps<"/organizer/[orgId]/event
           live && (
             <>
               {/* /th/... and /en/... pick the language even after the other preview remembered its own. */}
-              <Link href={`/th/events/${event.slug}`} target="_blank" className={smallGhostButtonClass}>
+              <a href={siteHref(`/th/events/${event.slug}`)} target="_blank" className={smallGhostButtonClass}>
                 ดูหน้างาน ↗
-              </Link>
-              <Link href={`/en/events/${event.slug}`} target="_blank" className={smallGhostButtonClass}>
+              </a>
+              <a href={siteHref(`/en/events/${event.slug}`)} target="_blank" className={smallGhostButtonClass}>
                 English ↗
-              </Link>
+              </a>
             </>
           )
         }

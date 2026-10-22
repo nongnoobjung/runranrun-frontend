@@ -1,9 +1,9 @@
-// Service worker for the organiser check-in page only (registered with scope /organizer/).
+// Service worker for the organiser check-in page only, on the organiser domain (organizer.<site>/<org>/events/<event>/checkin).
 // It lets a phone that has opened the page online open it again with no network: the page
 // is network-first with the last good copy as fallback, and Next's hashed static files are cache-first.
 // Everything else, including server actions, goes straight to the network.
-const CACHE = "kao-checkin-v1";
-const CHECKIN_PAGE = /^\/organizer\/[^/]+\/events\/[^/]+\/checkin\/?$/;
+const CACHE = "kao-checkin-v2";
+const CHECKIN_PAGE = /^\/[^/]+\/events\/[^/]+\/checkin\/?$/;
 
 self.addEventListener("install", () => self.skipWaiting());
 

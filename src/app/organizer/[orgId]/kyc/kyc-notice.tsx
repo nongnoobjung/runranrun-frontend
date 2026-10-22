@@ -10,7 +10,7 @@ export async function KycNotice({ orgId }: { orgId: string }) {
   const rejected = kyc.documents.filter((d) => d.status === "rejected");
   const missing = kyc.readiness.filter((r) => !r.ok).map((r) => KYC_READINESS[r.key]);
   const go = (
-    <Link href={`/organizer/${orgId}/kyc`} className="font-semibold text-inherit">
+    <Link href={`/${orgId}/kyc`} className="font-semibold text-inherit">
       ไปหน้าข้อมูลทีมและ KYC
     </Link>
   );

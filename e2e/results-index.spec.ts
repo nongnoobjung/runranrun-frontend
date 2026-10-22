@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { ALL_AUDIENCES } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -20,7 +21,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A fresh event with one paid 10K runner whose results the organiser imports and publishes through the API. */
 async function publishedResults() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const tag = randomUUID().slice(0, 8);
@@ -47,7 +48,7 @@ async function publishedResults() {
 
   const runnerEmail = `e2e-index-${randomUUID()}@example.com`;
   const lastName = `ค้นเจอ${tag}`;
-  const { accessToken: runnerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: runnerEmail } });
+  const { accessToken: runnerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: runnerEmail } });
   const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token: runnerToken, body: { eventId: event.id, races: [{ raceId: races[0].id, quantity: 1 }] } });
   const order = await apiCall<{ id: string }>("/v1/orders", {
     token: runnerToken,

@@ -27,7 +27,7 @@ async function NewEvent({ params }: Pick<PageProps<"/organizer/[orgId]/events/ne
   const { orgId } = await params;
   const org = await membership(orgId);
   const back = (
-    <Link href={`/organizer/${orgId}`} className="text-sm text-muted no-underline hover:text-ink">
+    <Link href={`/${orgId}`} className="text-sm text-muted no-underline hover:text-ink">
       ← งานทั้งหมดของ {org.nameTh}
     </Link>
   );

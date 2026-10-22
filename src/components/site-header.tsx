@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { logout } from "@/app/actions";
 import Link from "@/i18n/link";
 import { getT } from "@/i18n/server";
+import { organizerHref } from "@/lib/hosts";
 import { getToken } from "@/lib/session";
 import { LocaleSwitch } from "./locale-switch";
 import { Logo } from "./ui";
@@ -43,9 +44,9 @@ export async function SiteHeader() {
           <Link href="/results" className="text-ink no-underline">
             {t.common.nav.results}
           </Link>
-          <Link href="/organizer" className="text-ink no-underline">
+          <a href={organizerHref()} className="text-ink no-underline">
             {t.common.nav.organizers}
-          </Link>
+          </a>
         </nav>
         <div className="flex items-center gap-1 sm:gap-2">
           <LocaleSwitch />
@@ -81,12 +82,12 @@ export async function SiteFooter() {
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">{t.common.footer.organizers}</b>
-          <Link href="/organizer/new" className="text-muted no-underline hover:text-ink">
+          <a href={organizerHref("/new")} className="text-muted no-underline hover:text-ink">
             {t.common.footer.openTeam}
-          </Link>
-          <Link href="/organizer" className="text-muted no-underline hover:text-ink">
+          </a>
+          <a href={organizerHref()} className="text-muted no-underline hover:text-ink">
             {t.common.footer.organizerSignIn}
-          </Link>
+          </a>
         </div>
         <div className="flex flex-[1_1_150px] flex-col gap-1.5">
           <b className="text-ink">{t.common.footer.info}</b>

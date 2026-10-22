@@ -28,7 +28,7 @@ export default function FeesPage() {
 
 async function Fees() {
   // Only finance, admin and superadmin get this far (the API's `fees` permission); they may all change rates.
-  const fees = await adminGet<AdminFees>("/platform-fees", "/admin/fees");
+  const fees = await adminGet<AdminFees>("/platform-fees", "/fees");
   const d = fees.default;
   return (
     <>
@@ -49,7 +49,7 @@ async function Fees() {
             <ul aria-label="ผู้จัดที่มีอัตราของตัวเอง" className="flex flex-col divide-y divide-line text-sm">
               {fees.organizations.map((o) => (
                 <li key={o.id} className="flex flex-col gap-0.5 py-2.5 first:pt-0 last:pb-0">
-                  <Link href={`/admin/organizations/${o.id}`} className="font-semibold">
+                  <Link href={`/organizations/${o.id}`} className="font-semibold">
                     {o.nameTh}
                   </Link>
                   <span>{o.current ? feeLabel(o.current) : <span className="text-muted">ใช้อัตรา default จนกว่าอัตราที่ตั้งไว้จะเริ่ม</span>}</span>

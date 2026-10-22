@@ -14,7 +14,7 @@ async function putBib(orgId: string, eventId: string, registrationId: string, bi
     auth: true,
   });
   if (!res.ok) {
-    if (res.status === 401) redirect(`/login?next=${encodeURIComponent("/organizer")}`);
+    if (res.status === 401) redirect(`/login?next=${encodeURIComponent("/")}`);
     // A taken number also says who holds it, so the organiser can sort it out.
     const holder = res.problem.code === "BIB_TAKEN" && typeof res.problem.registrationNo === "string" ? res.problem.registrationNo : null;
     return holder ? { error: `เลขบิบนี้เป็นของผู้สมัคร ${holder} แล้ว` } : problemState(res.problem);

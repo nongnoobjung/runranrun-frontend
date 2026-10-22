@@ -30,13 +30,13 @@ export default function NewOrganizerPage() {
 }
 
 async function NewTeam() {
-  if (!(await getToken())) redirect("/login?next=/organizer/new");
+  if (!(await getToken())) redirect("/login?next=/new");
   const orgs = await myOrgs();
   return (
     <>
       <div className="flex flex-col gap-1">
         {orgs.length > 0 && (
-          <Link href="/organizer" className="text-sm text-muted no-underline hover:text-ink">
+          <Link href="/" className="text-sm text-muted no-underline hover:text-ink">
             ← ทีมผู้จัดของคุณ
           </Link>
         )}

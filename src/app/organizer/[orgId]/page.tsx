@@ -33,7 +33,7 @@ async function OrgName({ params }: Pick<PageProps<"/organizer/[orgId]">, "params
 async function Events({ params }: Pick<PageProps<"/organizer/[orgId]">, "params">) {
   const { orgId } = await params;
   const org = await membership(orgId);
-  const { items } = await orgGet<{ items: OrgEventSummary[] }>(orgId, "/events", `/organizer/${orgId}`);
+  const { items } = await orgGet<{ items: OrgEventSummary[] }>(orgId, "/events", `/${orgId}`);
   const canCreate = can(org.role, "manage_event");
   return (
     <>
@@ -43,11 +43,11 @@ async function Events({ params }: Pick<PageProps<"/organizer/[orgId]">, "params"
           <h1 className="text-3xl font-bold">งานทั้งหมด</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href={`/organizer/${orgId}/kyc`} className={smallGhostButtonClass}>
+          <Link href={`/${orgId}/kyc`} className={smallGhostButtonClass}>
             ข้อมูลทีมและ KYC
           </Link>
           {canCreate && (
-            <Link href={`/organizer/${orgId}/events/new`} className={`${smallButtonClass} no-underline`}>
+            <Link href={`/${orgId}/events/new`} className={`${smallButtonClass} no-underline`}>
               + สร้างงานใหม่
             </Link>
           )}

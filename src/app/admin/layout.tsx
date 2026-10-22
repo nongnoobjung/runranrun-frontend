@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import { Document } from "@/components/document";
-import Link from "next/link";
 import { Suspense } from "react";
 import { logout } from "@/app/actions";
 import { Logo } from "@/components/ui";
 import { adminMeOrNull } from "@/lib/admin";
+import { organizerHref } from "@/lib/hosts";
 import { AdminNav } from "./admin-nav";
 
 export const metadata: Metadata = { title: { default: "แอดมิน", template: "%s · แอดมิน · ก้าว" }, robots: { index: false } };
@@ -20,16 +20,9 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
               <Logo />
               <span className="rounded-full bg-ink px-2.5 py-0.5 text-xs font-semibold text-white">แอดมิน</span>
             </div>
-            <div className="flex items-center gap-1">
-              <Link href="/organizer" className="px-3 py-2 text-sm text-muted no-underline hover:text-ink">
-                ผู้จัดงาน
-              </Link>
-              <form action={logout}>
-                <button type="submit" className="px-3 py-2 text-sm text-muted hover:text-ink">
-                  ออกจากระบบ
-                </button>
-              </form>
-            </div>
+            <Suspense fallback={null}>
+              <Account />
+            </Suspense>
           </div>
           <Suspense fallback={<div className="h-12" />}>
             <Nav />
@@ -41,6 +34,24 @@ export default function AdminLayout({ children }: LayoutProps<"/admin">) {
   );
 }
 
+/** Shown once signed in, so the login page has none of it. */
+async function Account() {
+  if (!(await adminMeOrNull())) return null;
+  return (
+    <div className="flex items-center gap-1">
+      {/* The organiser backoffice is another domain with its own sign-in; /organizer jumps there. */}
+      <a href={organizerHref()} className="px-3 py-2 text-sm text-muted no-underline hover:text-ink">
+        หลังบ้านผู้จัดงาน
+      </a>
+      <form action={logout}>
+        <button type="submit" className="px-3 py-2 text-sm text-muted hover:text-ink">
+          ออกจากระบบ
+        </button>
+      </form>
+    </div>
+  );
+}
+
 async function Nav() {
   // People who are not platform staff get the 404 from the page itself: a notFound() thrown here,
   // in a root layout, would skip admin/not-found.tsx.
@@ -49,13 +60,13 @@ async function Nav() {
   return (
     <AdminNav
       items={[
-        { href: "/admin", label: "ภาพรวม" },
-        { href: "/admin/reviews", label: "ตรวจงาน" },
-        { href: "/admin/organizations", label: "ผู้จัดงาน" },
-        ...(me.can.payouts ? [{ href: "/admin/payouts", label: "จ่ายเงินผู้จัด" }] : []),
-        ...(me.can.fees ? [{ href: "/admin/fees", label: "ค่าธรรมเนียม" }] : []),
-        { href: "/admin/users", label: "ผู้ใช้" },
-        { href: "/admin/audit", label: "บันทึกการทำงาน" },
+        { href: "/", label: "ภาพรวม" },
+        { href: "/reviews", label: "ตรวจงาน" },
+        { href: "/organizations", label: "ผู้จัดงาน" },
+        ...(me.can.payouts ? [{ href: "/payouts", label: "จ่ายเงินผู้จัด" }] : []),
+        ...(me.can.fees ? [{ href: "/fees", label: "ค่าธรรมเนียม" }] : []),
+        { href: "/users", label: "ผู้ใช้" },
+        { href: "/audit", label: "บันทึกการทำงาน" },
       ]}
     />
   );

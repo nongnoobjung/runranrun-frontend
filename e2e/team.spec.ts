@@ -1,14 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ORG, orgURL, signInOrganizer } from "./hosts";
 
 const ORGANIZER = "organizer@riverside.example";
 
-/** Signs in through the login page; organisers with one team land on its event list. */
+/** Signs in on the organiser backoffice; organisers with one team land on its event list. */
 async function signIn(page: Page, email: string) {
-  await page.goto("/login?next=/organizer");
-  await page.getByLabel("อีเมล").fill(email);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
-  await expect(page).toHaveURL(/\/organizer\/[0-9a-f-]{36}$/);
+  await signInOrganizer(page, email);
+  await expect(page).toHaveURL(orgURL("/[0-9a-f-]{36}$"));
 }
 
 /** Opens the team page from the first event's sidebar. */
@@ -49,7 +48,7 @@ test("an owner invites a teammate, who joins by signing in, and then removes the
   await expect(memberRow(page, email)).toHaveCount(0);
 
   // Once removed, the backoffice is closed to them.
-  await guest.goto("/organizer");
+  await guest.goto(ORG);
   await expect(guest.getByText("บัญชีนี้ยังไม่ได้อยู่ในทีมผู้จัดงาน")).toBeVisible();
   await theirs.close();
 });

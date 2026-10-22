@@ -21,6 +21,6 @@ export async function changeMemberRole(orgId: string, memberId: string, role: Or
 export async function removeMember(orgId: string, memberId: string, you: boolean): Promise<OrgFormState> {
   const res = await orgMutation(orgId, `/members/${memberId}`, "DELETE");
   if (!res.ok) return res.state;
-  if (you) redirect("/organizer");
+  if (you) redirect("/");
   return {};
 }
