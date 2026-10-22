@@ -1,3 +1,6 @@
+"use client";
+
+import { useT } from "@/i18n/client";
 import type { EventType } from "@/lib/types";
 
 type Scene = "night" | "mountain" | "sea" | "city";
@@ -47,7 +50,7 @@ export function sceneFor(slug: string, type: EventType): Scene {
 
 /**
  * Illustrated stand-in for an event banner. When the organiser uploads a cover image
- * the image is shown instead.
+ * the image is shown instead. A Client Component so the Thai-only organiser pages can share it (they read Thai).
  */
 export function EventBanner({
   slug,
@@ -68,11 +71,12 @@ export function EventBanner({
   titleSize?: string;
   children?: React.ReactNode;
 }) {
+  const t = useT();
   const s = SCENES[sceneFor(slug, type)];
   return (
     <div
       role="img"
-      aria-label={`แบนเนอร์งาน ${title}`}
+      aria-label={t.events.card.banner(title)}
       className={`relative overflow-hidden ${className}`}
       style={{ backgroundColor: s.sky }}
     >

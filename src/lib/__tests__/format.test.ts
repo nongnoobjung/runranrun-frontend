@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { baht, countdown, duration, fmt, pace, problemMessage, provinceName, waitLabel } from "../format";
+import { answerText, baht, countdown, duration, fmt, fmtFor, pace, problemMessage, profileLabel, provinceName, waitLabel } from "../format";
 
 describe("format", () => {
   it("shows baht from satang, with satang only when needed", () => {
@@ -38,6 +38,31 @@ describe("format", () => {
       "มีคนใช้งานพร้อมกันจำนวนมาก รอ 42 วินาทีแล้วลองใหม่",
     );
     expect(problemMessage({ code: "RATE_LIMITED", title: "Too many requests" })).toBe("มีคนใช้งานพร้อมกันจำนวนมาก รอสักครู่แล้วลองใหม่");
+  });
+});
+
+describe("English formatting", () => {
+  it("formats dates the British way on the Bangkok calendar day, and numbers with commas", () => {
+    const f = fmtFor("en");
+    expect(f.date("2027-02-14")).toBe("14 Feb 2027");
+    expect(f.weekday("2027-02-14")).toBe("Sunday");
+    expect(f.monthShort("2027-02-14")).toBe("Feb");
+    expect(f.time("2027-02-13T23:30:00Z")).toBe("06:30");
+    expect(f.num(12_345)).toBe("12,345");
+    expect(fmtFor("th")).toBe(fmt);
+  });
+
+  it("translates API problems, provinces, pace and answers", () => {
+    expect(problemMessage({ code: "SOLD_OUT", title: "t" }, "en")).toBe("This race is full");
+    expect(problemMessage({ code: "SOMETHING_NEW", title: "t", detail: "d" }, "en")).toBe("d");
+    expect(provinceName("BKK", "en")).toBe("Bangkok");
+    expect(pace(313, "en")).toBe("5:13 /km");
+    expect(answerText(true, "en")).toBe("Yes");
+    expect(waitLabel(5400, "en")).toBe("about 1 hr 30 min");
+    expect(problemMessage({ code: "RATE_LIMITED", title: "t", retryAfterSeconds: 42 }, "en")).toBe("Lots of people are here at once. Wait 42 seconds and try again");
+    const me = { isSelf: true, nickname: "Chai", firstNameTh: "สมชาย", lastNameTh: "ใจดี", firstNameEn: "Somchai", lastNameEn: "Jaidee" };
+    expect(profileLabel(me, "en")).toBe("Me · Chai · Somchai Jaidee");
+    expect(profileLabel(me)).toBe("ตัวฉัน · Chai · สมชาย ใจดี");
   });
 });
 

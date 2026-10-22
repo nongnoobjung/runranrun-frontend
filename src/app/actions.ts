@@ -3,10 +3,13 @@
 import { createHash, randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { localePath, type Locale } from "@/i18n/config";
+import { dictionary, type Dict } from "@/i18n/dictionaries";
+import { actionLocale } from "@/i18n/server";
 import { api } from "@/lib/api";
 import { problemMessage } from "@/lib/format";
 import { clearQueueToken, clearToken, getQueueToken, getToken, setQueueToken, setToken } from "@/lib/session";
-import type { CheckoutSession, Order, Payment, QueueStatus } from "@/lib/types";
+import type { ApiProblem, CheckoutSession, Order, Payment, QueueStatus } from "@/lib/types";
 
 export interface FormState {
   error?: string;
@@ -19,34 +22,54 @@ function safeNext(value: FormDataEntryValue | null): string {
   return v.startsWith("/") && !v.startsWith("//") ? v : "/";
 }
 
+/** The calling page's language: messages, API problems and redirects stay in it. */
+async function inLocale() {
+  const locale = await actionLocale();
+  return {
+    t: dictionary(locale).actions,
+    problem: (p: ApiProblem) => problemMessage(p, locale),
+    locale,
+  };
+}
+
+/** redirect() to a site path in the caller's language. */
+function go(locale: Locale, path: string): never {
+  redirect(localePath(locale, path));
+}
+
+type ActionText = Dict["actions"];
+
 // ---------------------------------------------------------------- auth
 
 export async function login(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const email = z.string().trim().email().safeParse(formData.get("email"));
-  if (!email.success) return { fieldErrors: { email: "กรอกอีเมลให้ถูกต้อง" } };
+  if (!email.success) return { fieldErrors: { email: t.emailInvalid } };
   // Temporary: the API's development login. LINE Login / OTP replace this.
   const res = await api<{ accessToken: string; expiresIn: number }>("/v1/dev/login", { method: "POST", body: { email: email.data } });
-  if (!res.ok) return { error: problemMessage(res.problem) };
+  if (!res.ok) return { error: problem(res.problem) };
   await setToken(res.data.accessToken, res.data.expiresIn);
-  redirect(safeNext(formData.get("next")));
+  go(locale, safeNext(formData.get("next")));
 }
 
 export async function logout(): Promise<void> {
+  const { locale } = await inLocale();
   await clearToken();
-  redirect("/");
+  go(locale, "/");
 }
 
 // ---------------------------------------------------------------- checkout
 
 export async function startCheckout(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const slug = String(formData.get("slug") ?? "");
-  if (!(await getToken())) redirect(`/login?next=/events/${encodeURIComponent(slug)}`);
+  if (!(await getToken())) go(locale, `/login?next=/events/${encodeURIComponent(slug)}`);
 
   const races = [...formData.entries()]
     .filter(([k]) => k.startsWith("qty:"))
     .map(([k, v]) => ({ raceId: k.slice(4), quantity: Number(v) }))
     .filter((r) => r.quantity > 0);
-  if (races.length === 0) return { error: "เลือกระยะและจำนวนผู้วิ่งอย่างน้อย 1 คน" };
+  if (races.length === 0) return { error: t.pickRace };
 
   const eventId = String(formData.get("eventId") ?? "");
   // Events with a waiting room want the admission the queue gave this runner.
@@ -58,14 +81,14 @@ export async function startCheckout(_prev: FormState, formData: FormData): Promi
     headers: queueToken ? { "x-queue-admission": queueToken } : undefined,
   });
   if (!res.ok) {
-    if (res.status === 401) redirect(`/login?next=/events/${encodeURIComponent(slug)}`);
+    if (res.status === 401) go(locale, `/login?next=/events/${encodeURIComponent(slug)}`);
     if (res.problem.code === "QUEUE_REQUIRED" || res.problem.code === "QUEUE_TOKEN_EXPIRED") {
       if (queueToken) await clearQueueToken(eventId);
-      redirect(`/events/${encodeURIComponent(slug)}/queue${res.problem.code === "QUEUE_TOKEN_EXPIRED" ? "?expired=1" : ""}`);
+      go(locale, `/events/${encodeURIComponent(slug)}/queue${res.problem.code === "QUEUE_TOKEN_EXPIRED" ? "?expired=1" : ""}`);
     }
-    return { error: problemMessage(res.problem) };
+    return { error: problem(res.problem) };
   }
-  redirect(`/checkout/${res.data.id}`);
+  go(locale, `/checkout/${res.data.id}`);
 }
 
 const RUNNER_FIELDS = [
@@ -73,25 +96,17 @@ const RUNNER_FIELDS = [
   "idDocType", "idDocNumber", "phone", "emergencyName", "emergencyPhone",
 ] as const;
 
-/** The API's messages for answers to the organiser's questions. */
-const ANSWER_ERROR_TH: Record<string, string> = {
-  required: "จำเป็นต้องตอบ",
-  "must be ticked": "ต้องติ๊กก่อนสมัคร",
-  "must be a number": "ใส่เป็นตัวเลข",
-  "out of range": "ตัวเลขอยู่นอกช่วงที่ผู้จัดกำหนด",
-};
-
 /**
  * Turns API validation paths into form field names: participants.0.runner.birthDate → p0.birthDate,
  * participants.0.answers.q_ab12 → p0.q.q_ab12. A single runner's paths (runner.birthDate, answers.q_ab12) map to p0.
  */
-function toFieldErrors(errors: { path: string; message: string }[] | undefined): Record<string, string> {
+function toFieldErrors(errors: { path: string; message: string }[] | undefined, t: ActionText): Record<string, string> {
   const out: Record<string, string> = {};
   for (const e of errors ?? []) {
     if (/^(runner|answers)\./.test(e.path)) e.path = `participants.0.${e.path}`;
     const answer = e.path.match(/^participants\.(\d+)\.answers\.(\w+)$/);
     if (answer) {
-      out[`p${answer[1]}.q.${answer[2]}`] = ANSWER_ERROR_TH[e.message] ?? "คำตอบไม่ถูกต้อง";
+      out[`p${answer[1]}.q.${answer[2]}`] = t.answer[e.message] ?? t.answerInvalid;
       continue;
     }
     const m = e.path.match(/^participants\.(\d+)\.(?:runner\.)?(\w+)/);
@@ -102,7 +117,7 @@ function toFieldErrors(errors: { path: string; message: string }[] | undefined):
 }
 
 /** Reads one runner's fields (see RunnerFields), noting the required ones left empty in `fieldErrors`. */
-function runnerOf(formData: FormData, i: number, fieldErrors: Record<string, string>) {
+function runnerOf(formData: FormData, i: number, fieldErrors: Record<string, string>, t: ActionText) {
   const runner: Record<string, string | undefined> = {};
   for (const f of RUNNER_FIELDS) {
     const v = formData.get(`p${i}.${f}`);
@@ -111,7 +126,7 @@ function runnerOf(formData: FormData, i: number, fieldErrors: Record<string, str
   // A saved runner's ID number stays on the server; the API reads it from the profile.
   const profileId = formData.get(`p${i}.profileId`);
   for (const f of ["firstNameEn", "lastNameEn", "birthDate", "idDocNumber", "emergencyName", "emergencyPhone"] as const) {
-    if (!runner[f] && !(f === "idDocNumber" && profileId)) fieldErrors[`p${i}.${f}`] = "จำเป็นต้องกรอก";
+    if (!runner[f] && !(f === "idDocNumber" && profileId)) fieldErrors[`p${i}.${f}`] = t.required;
   }
   return { ...runner, nationality: runner.nationality ?? "TH" };
 }
@@ -140,6 +155,7 @@ function answersOf(formData: FormData, i: number): Record<string, unknown> {
 }
 
 export async function submitCheckout(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const sessionId = String(formData.get("sessionId"));
   const count = Number(formData.get("count"));
   const get = (name: string) => {
@@ -149,9 +165,9 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
 
   const fieldErrors: Record<string, string> = {};
   const participants = Array.from({ length: count }, (_, i) => {
-    const runner = runnerOf(formData, i, fieldErrors);
+    const runner = runnerOf(formData, i, fieldErrors, t);
     const shirt = get(`p${i}.shirt`);
-    if (formData.get("needsShirt") === "1" && !shirt) fieldErrors[`p${i}.shirt`] = "เลือกไซซ์เสื้อ";
+    if (formData.get("needsShirt") === "1" && !shirt) fieldErrors[`p${i}.shirt`] = t.pickShirt;
     return {
       raceId: get(`p${i}.raceId`)!,
       shirtVariantId: shirt,
@@ -162,9 +178,9 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
     };
   });
   const buyer = { name: get("buyer.name"), email: get("buyer.email"), phone: get("buyer.phone") };
-  for (const [k, v] of Object.entries(buyer)) if (!v) fieldErrors[`buyer.${k}`] = "จำเป็นต้องกรอก";
-  const consents = consentsOf(formData, fieldErrors);
-  if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนไปต่อ", fieldErrors };
+  for (const [k, v] of Object.entries(buyer)) if (!v) fieldErrors[`buyer.${k}`] = t.required;
+  const consents = consentsOf(formData, fieldErrors, t);
+  if (Object.keys(fieldErrors).length) return { error: t.completeCheckout, fieldErrors };
 
   // Hold the chosen shirt sizes first; a sold-out size comes back before the order is created.
   if (formData.get("needsShirt") === "1") {
@@ -175,7 +191,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
       auth: true,
       body: { variants: [...counts].map(([variantId, quantity]) => ({ variantId, quantity })) },
     });
-    if (!sizes.ok) return { error: problemMessage(sizes.problem) };
+    if (!sizes.ok) return { error: problem(sizes.problem) };
   }
 
   const body = { checkoutSessionId: sessionId, couponCode: get("coupon"), buyer, participants, consents };
@@ -183,22 +199,23 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
   const key = createHash("sha256").update(JSON.stringify(body)).digest("hex").slice(0, 40);
   const res = await api<Order>("/v1/orders", { method: "POST", auth: true, body, idempotencyKey: `order-${key}` });
   if (!res.ok) {
-    if (res.problem.code === "ORDER_EXISTS" && typeof res.problem.orderId === "string") redirect(`/orders/${res.problem.orderId}/pay`);
-    return { error: problemMessage(res.problem), fieldErrors: toFieldErrors(res.problem.errors) };
+    if (res.problem.code === "ORDER_EXISTS" && typeof res.problem.orderId === "string") go(locale, `/orders/${res.problem.orderId}/pay`);
+    return { error: problem(res.problem), fieldErrors: toFieldErrors(res.problem.errors, t) };
   }
-  redirect(`/orders/${res.data.id}/pay`);
+  go(locale, `/orders/${res.data.id}/pay`);
 }
 
 // ---------------------------------------------------------------- payment
 
 export async function createPayment(orderId: string, method: "promptpay"): Promise<{ payment?: Payment; error?: string }> {
+  const { problem } = await inLocale();
   const res = await api<Payment>(`/v1/orders/${orderId}/payments`, {
     method: "POST",
     auth: true,
     body: { method },
     idempotencyKey: `pay-${randomUUID()}`,
   });
-  return res.ok ? { payment: res.data } : { error: problemMessage(res.problem) };
+  return res.ok ? { payment: res.data } : { error: problem(res.problem) };
 }
 
 export async function orderStatus(orderId: string): Promise<Order["status"] | null> {
@@ -208,14 +225,16 @@ export async function orderStatus(orderId: string): Promise<Order["status"] | nu
 
 /** Development only: pretends the runner scanned the QR and paid. */
 export async function devCompletePayment(orderId: string): Promise<{ error?: string }> {
+  const { problem } = await inLocale();
   if (process.env.ENABLE_DEV_TOOLS !== "true") return { error: "dev tools are disabled" };
   const res = await api(`/v1/dev/orders/${orderId}/complete-payment`, { method: "POST", body: { status: "successful" } });
-  return res.ok ? {} : { error: problemMessage(res.problem) };
+  return res.ok ? {} : { error: problem(res.problem) };
 }
 
 export async function cancelCheckout(sessionId: string, slug: string): Promise<void> {
+  const { locale } = await inLocale();
   await api(`/v1/checkout/sessions/${sessionId}`, { method: "DELETE", auth: true });
-  redirect(`/events/${slug}`);
+  go(locale, `/events/${slug}`);
 }
 
 // ---------------------------------------------------------------- waiting room
@@ -232,13 +251,14 @@ export interface QueuePoll {
  * Once admitted, the token goes into an httpOnly cookie for startCheckout; the browser never sees it.
  */
 export async function pollQueue(eventId: string, join: boolean): Promise<QueuePoll> {
-  if (!z.string().uuid().safeParse(eventId).success) return { error: "ไม่พบงานนี้" };
+  const { t, problem } = await inLocale();
+  if (!z.string().uuid().safeParse(eventId).success) return { error: t.eventNotFound };
   const res = join
     ? await api<QueueStatus>("/v1/checkout/queue", { method: "POST", auth: true, body: { eventId } })
     : await api<QueueStatus>(`/v1/checkout/queue/${eventId}`, { auth: true });
   if (!res.ok) {
     const retry = res.problem.retryAfterSeconds;
-    return { error: problemMessage(res.problem), retryAfterSeconds: typeof retry === "number" ? retry : undefined };
+    return { error: problem(res.problem), retryAfterSeconds: typeof retry === "number" ? retry : undefined };
   }
   if (res.data.admission) await setQueueToken(eventId, res.data.admission.token, res.data.admission.expiresAt);
   // The token stays on the server.
@@ -249,6 +269,7 @@ export async function pollQueue(eventId: string, join: boolean): Promise<QueuePo
 
 /** A runner gives up their place and asks for the policy amount back, into the bank account they type. */
 export async function requestRefund(registrationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const get = (name: string) => {
     const v = formData.get(name);
     return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
@@ -257,102 +278,111 @@ export async function requestRefund(registrationId: string, _prev: FormState, fo
   const reason = choice === "อื่น ๆ" || !choice ? get("reasonOther") : [choice, get("reasonOther")].filter(Boolean).join(" · ");
   const needsBank = formData.get("needsBank") === "1";
   const fieldErrors: Record<string, string> = {};
-  if (!reason) fieldErrors.reasonOther = "บอกเหตุผลสั้น ๆ";
+  if (!reason) fieldErrors.reasonOther = t.refundReason;
   const bank = needsBank ? { bankCode: get("bankCode"), accountNumber: get("accountNumber"), accountName: get("accountName") } : undefined;
-  if (bank) for (const [k, v] of Object.entries(bank)) if (!v) fieldErrors[`bank.${k}`] = "จำเป็นต้องกรอก";
-  if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนส่งคำขอ", fieldErrors };
+  if (bank) for (const [k, v] of Object.entries(bank)) if (!v) fieldErrors[`bank.${k}`] = t.required;
+  if (Object.keys(fieldErrors).length) return { error: t.completeRefund, fieldErrors };
 
   const res = await api(`/v1/me/registrations/${encodeURIComponent(registrationId)}/refund-requests`, { method: "POST", auth: true, body: { reason, bank } });
   if (!res.ok) {
-    if (res.status === 401) redirect(`/login?next=/me/registrations/${registrationId}/refund`);
+    if (res.status === 401) go(locale, `/login?next=/me/registrations/${registrationId}/refund`);
     const errors: Record<string, string> = {};
-    for (const e of res.problem.errors ?? []) if (e.path.startsWith("bank.")) errors[e.path] = e.path === "bank.accountNumber" ? "เลขบัญชี 10–15 หลัก" : "ตรวจสอบช่องนี้";
-    return { error: problemMessage(res.problem), fieldErrors: errors };
+    for (const e of res.problem.errors ?? []) if (e.path.startsWith("bank.")) errors[e.path] = e.path === "bank.accountNumber" ? t.accountNumber : t.checkField;
+    return { error: problem(res.problem), fieldErrors: errors };
   }
-  redirect(`/me/registrations/${registrationId}?refund=requested`);
+  go(locale, `/me/registrations/${registrationId}?refund=requested`);
 }
 
 // ---------------------------------------------------------------- waitlist
 
 /** Joins the queue of the full race whose button was pressed (its value is the race id). */
 export async function joinWaitlist(_prev: FormState, formData: FormData): Promise<FormState> {
+  const { problem, locale } = await inLocale();
   const slug = String(formData.get("slug") ?? "");
-  if (!(await getToken())) redirect(`/login?next=/events/${encodeURIComponent(slug)}`);
+  if (!(await getToken())) go(locale, `/login?next=/events/${encodeURIComponent(slug)}`);
   const res = await api("/v1/me/waitlist", { method: "POST", auth: true, body: { raceId: formData.get("raceId") } });
   if (!res.ok && res.problem.code !== "ALREADY_IN_WAITLIST") {
-    if (res.status === 401) redirect(`/login?next=/events/${encodeURIComponent(slug)}`);
-    return { error: problemMessage(res.problem) };
+    if (res.status === 401) go(locale, `/login?next=/events/${encodeURIComponent(slug)}`);
+    return { error: problem(res.problem) };
   }
-  redirect("/me/waitlist");
+  go(locale, "/me/waitlist");
 }
 
 export async function leaveWaitlist(entryId: string): Promise<void> {
+  const { locale } = await inLocale();
   await api(`/v1/me/waitlist/${encodeURIComponent(entryId)}`, { method: "DELETE", auth: true });
-  redirect("/me/waitlist");
+  go(locale, "/me/waitlist");
 }
 
 /** Takes up an offered place and goes to the checkout that now holds it. */
 export async function claimWaitlist(entryId: string): Promise<FormState> {
+  const { problem, locale } = await inLocale();
   const res = await api<{ checkoutSessionId: string }>(`/v1/me/waitlist/${encodeURIComponent(entryId)}/claim`, { method: "POST", auth: true });
-  if (!res.ok) return { error: problemMessage(res.problem) };
-  redirect(`/checkout/${res.data.checkoutSessionId}`);
+  if (!res.ok) return { error: problem(res.problem) };
+  go(locale, `/checkout/${res.data.checkoutSessionId}`);
 }
 
 // ---------------------------------------------------------------- transfers and race changes
 
 /** Offers the place to someone else by email. */
 export async function createTransfer(registrationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const toEmail = String(formData.get("toEmail") ?? "").trim();
-  if (!z.string().email().safeParse(toEmail).success) return { fieldErrors: { toEmail: "ใส่อีเมลให้ถูกต้อง" } };
+  if (!z.string().email().safeParse(toEmail).success) return { fieldErrors: { toEmail: t.transferEmail } };
   const res = await api(`/v1/me/registrations/${encodeURIComponent(registrationId)}/transfers`, { method: "POST", auth: true, body: { toEmail } });
-  if (!res.ok) return { error: problemMessage(res.problem) };
-  redirect(`/me/registrations/${registrationId}/transfer`);
+  if (!res.ok) return { error: problem(res.problem) };
+  go(locale, `/me/registrations/${registrationId}/transfer`);
 }
 
 export async function cancelTransfer(transferId: string, back: string): Promise<void> {
+  const { locale } = await inLocale();
   await api(`/v1/me/transfers/${encodeURIComponent(transferId)}`, { method: "DELETE", auth: true });
-  redirect(back);
+  go(locale, back);
 }
 
 export async function declineTransfer(transferId: string): Promise<void> {
+  const { locale } = await inLocale();
   await api(`/v1/me/transfers/${encodeURIComponent(transferId)}/decline`, { method: "POST", auth: true });
-  redirect("/me/transfers");
+  go(locale, "/me/transfers");
 }
 
 /** The recipient takes the place: straight to their ticket, or to paying the transfer fee first. */
 export async function acceptTransfer(transferId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const fieldErrors: Record<string, string> = {};
-  const runner = runnerOf(formData, 0, fieldErrors);
-  const consents = consentsOf(formData, fieldErrors);
-  if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนรับสิทธิ์", fieldErrors };
+  const runner = runnerOf(formData, 0, fieldErrors, t);
+  const consents = consentsOf(formData, fieldErrors, t);
+  if (Object.keys(fieldErrors).length) return { error: t.completeAccept, fieldErrors };
   const res = await api<{ status: "completed"; registrationId: string } | { status: "pending_payment"; orderId: string }>(
     `/v1/me/transfers/${encodeURIComponent(transferId)}/accept`,
     { method: "POST", auth: true, body: { runner, answers: answersOf(formData, 0), consents, ...profileChoiceOf(formData, 0) } },
   );
-  if (!res.ok) return { error: problemMessage(res.problem), fieldErrors: toFieldErrors(res.problem.errors) };
-  if (res.data.status === "pending_payment") redirect(`/orders/${res.data.orderId}/pay`);
-  redirect(`/me/registrations/${res.data.registrationId}`);
+  if (!res.ok) return { error: problem(res.problem), fieldErrors: toFieldErrors(res.problem.errors, t) };
+  if (res.data.status === "pending_payment") go(locale, `/orders/${res.data.orderId}/pay`);
+  go(locale, `/me/registrations/${res.data.registrationId}`);
 }
 
 /** Moves the place to another race: at once when nothing is due, otherwise through paying the difference. */
 export async function requestRaceChange(registrationId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const toRaceId = String(formData.get("toRaceId") ?? "");
-  if (!toRaceId) return { error: "เลือกระยะที่จะเปลี่ยนไป" };
+  if (!toRaceId) return { error: t.pickNewRace };
   const res = await api<{ status: "completed" | "pending_payment"; orderId: string }>(
     `/v1/me/registrations/${encodeURIComponent(registrationId)}/race-changes`,
     { method: "POST", auth: true, body: { toRaceId } },
   );
   if (!res.ok) {
-    if (res.problem.code === "RACE_CHANGE_IN_PROGRESS" && typeof res.problem.orderId === "string") redirect(`/orders/${res.problem.orderId}/pay`);
-    return { error: problemMessage(res.problem) };
+    if (res.problem.code === "RACE_CHANGE_IN_PROGRESS" && typeof res.problem.orderId === "string") go(locale, `/orders/${res.problem.orderId}/pay`);
+    return { error: problem(res.problem) };
   }
-  if (res.data.status === "pending_payment") redirect(`/orders/${res.data.orderId}/pay`);
-  redirect(`/me/registrations/${registrationId}?changed=1`);
+  if (res.data.status === "pending_payment") go(locale, `/orders/${res.data.orderId}/pay`);
+  go(locale, `/me/registrations/${registrationId}?changed=1`);
 }
 
 export async function cancelRaceChange(raceChangeId: string, registrationId: string): Promise<void> {
+  const { locale } = await inLocale();
   await api(`/v1/me/race-changes/${encodeURIComponent(raceChangeId)}`, { method: "DELETE", auth: true });
-  redirect(`/me/registrations/${registrationId}/race-change`);
+  go(locale, `/me/registrations/${registrationId}/race-change`);
 }
 
 // ---------------------------------------------------------------- saved runners
@@ -361,10 +391,11 @@ const PROFILE_EXTRAS = ["nickname", "emergencyRelation", "shirtSize", "clubName"
 
 /** Creates a saved runner, or updates one (where an empty ID number keeps the saved one). */
 export async function saveProfile(profileId: string | null, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { t, problem, locale } = await inLocale();
   const fieldErrors: Record<string, string> = {};
-  const runner = runnerOf(formData, 0, fieldErrors);
+  const runner = runnerOf(formData, 0, fieldErrors, t);
   if (profileId && fieldErrors["p0.idDocNumber"]) delete fieldErrors["p0.idDocNumber"];
-  if (Object.keys(fieldErrors).length) return { error: "กรอกข้อมูลให้ครบก่อนบันทึก", fieldErrors };
+  if (Object.keys(fieldErrors).length) return { error: t.completeProfile, fieldErrors };
   const body: Record<string, unknown> = { ...runner, isSelf: formData.get("isSelf") === "on" };
   for (const f of PROFILE_EXTRAS) {
     const v = String(formData.get(f) ?? "").trim();
@@ -377,38 +408,41 @@ export async function saveProfile(profileId: string | null, _prev: FormState, fo
     body,
   });
   if (!res.ok) {
-    if (res.status === 401) redirect("/login?next=/me/profiles");
-    return { error: problemMessage(res.problem), fieldErrors: toFieldErrors(res.problem.errors?.map((e) => ({ ...e, path: `runner.${e.path}` }))) };
+    if (res.status === 401) go(locale, "/login?next=/me/profiles");
+    return { error: problem(res.problem), fieldErrors: toFieldErrors(res.problem.errors?.map((e) => ({ ...e, path: `runner.${e.path}` })), t) };
   }
-  redirect("/me/profiles");
+  go(locale, "/me/profiles");
 }
 
 export async function deleteProfile(profileId: string): Promise<void> {
+  const { locale } = await inLocale();
   await api(`/v1/me/profiles/${encodeURIComponent(profileId)}`, { method: "DELETE", auth: true });
-  redirect("/me/profiles");
+  go(locale, "/me/profiles");
 }
 
 /** The consents ticked on a registration form; the required one must be ticked before anything is sent. */
-function consentsOf(formData: FormData, fieldErrors: Record<string, string>) {
-  if (formData.get("consent") !== "1") fieldErrors.consent = "ติ๊กยอมรับก่อนสมัคร";
+function consentsOf(formData: FormData, fieldErrors: Record<string, string>, t: ActionText) {
+  if (formData.get("consent") !== "1") fieldErrors.consent = t.consentRequired;
   return { terms: true, privacy: true, shareWithOrganizer: true, marketing: formData.get("marketing") === "1" };
 }
 
 // ---------------------------------------------------------------- privacy (PDPA)
 
 export async function setMarketingConsent(granted: boolean): Promise<void> {
+  const { locale } = await inLocale();
   await api("/v1/me/consents", { method: "POST", auth: true, body: { purpose: "marketing", granted } });
-  redirect("/me/privacy");
+  go(locale, "/me/privacy");
 }
 
 /** Closes the account, signs out and goes home. */
 export async function closeAccount(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (formData.get("confirm") !== "1") return { error: "ติ๊กยืนยันก่อนปิดบัญชี" };
+  const { t, problem, locale } = await inLocale();
+  if (formData.get("confirm") !== "1") return { error: t.confirmClose };
   const res = await api("/v1/me", { method: "DELETE", auth: true, body: { confirm: true } });
   if (!res.ok) {
-    if (res.status === 401) redirect("/login?next=/me/privacy");
-    return { error: problemMessage(res.problem) };
+    if (res.status === 401) go(locale, "/login?next=/me/privacy");
+    return { error: problem(res.problem) };
   }
   await clearToken();
-  redirect("/?closed=1");
+  go(locale, "/?closed=1");
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { inputClass } from "@/components/ui";
+import { useLocale, useT } from "@/i18n/client";
 import { profileLabel } from "@/lib/format";
 import type { RunnerProfile } from "@/lib/types";
 import { RunnerFields } from "./runner-fields";
@@ -22,18 +23,20 @@ export function SavedRunnerFields({
   /** The saved runner picked to begin with, if any. */
   initial?: string;
 }) {
+  const t = useT().checkout.saved;
+  const locale = useLocale();
   const [picked, setPicked] = useState(initial ?? "");
   const saved = profiles.find((p) => p.id === picked);
   return (
     <div className="flex flex-col gap-3">
       {profiles.length > 0 && (
         <label className="flex flex-col gap-1">
-          <span className="text-[13px] text-muted">ใช้ข้อมูลผู้วิ่งที่บันทึกไว้</span>
-          <select value={picked} onChange={(e) => setPicked(e.target.value)} className={inputClass} aria-label="ใช้ข้อมูลผู้วิ่งที่บันทึกไว้">
-            <option value="">กรอกเอง</option>
+          <span className="text-[13px] text-muted">{t.use}</span>
+          <select value={picked} onChange={(e) => setPicked(e.target.value)} className={inputClass} aria-label={t.use}>
+            <option value="">{t.typeIn}</option>
             {profiles.map((p) => (
               <option key={p.id} value={p.id}>
-                {profileLabel(p)}
+                {profileLabel(p, locale)}
               </option>
             ))}
           </select>
@@ -44,7 +47,7 @@ export function SavedRunnerFields({
       {!saved && (
         <label className="flex min-h-11 items-center gap-3 text-sm">
           <input type="checkbox" name={`${prefix}.saveProfile`} value="1" className="h-5 w-5 flex-none accent-brand" />
-          บันทึกผู้วิ่งคนนี้ไว้ใช้ครั้งหน้า (เก็บแบบเข้ารหัส ลบได้ทุกเมื่อ)
+          {t.save}
         </label>
       )}
     </div>

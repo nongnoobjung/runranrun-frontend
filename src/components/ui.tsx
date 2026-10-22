@@ -1,5 +1,6 @@
-import Link from "next/link";
-import type { Availability } from "@/lib/types";
+import Link from "@/i18n/link";
+
+export { AvailabilityPill } from "./availability-pill";
 
 export function Logo() {
   return (
@@ -10,19 +11,6 @@ export function Logo() {
       <span className="text-2xl font-bold">ก้าว</span>
     </Link>
   );
-}
-
-const AVAILABILITY: Record<Availability, { label: string; className: string }> = {
-  open: { label: "เปิดรับ", className: "bg-white text-brand" },
-  almost_full: { label: "ใกล้เต็ม", className: "bg-warn-soft text-warn" },
-  sold_out: { label: "เต็มแล้ว", className: "bg-bad-soft text-bad" },
-  not_open: { label: "ยังไม่เปิด", className: "bg-ice text-muted" },
-  closed: { label: "ปิดรับแล้ว", className: "bg-ice text-muted" },
-};
-
-export function AvailabilityPill({ value, className = "" }: { value: Availability; className?: string }) {
-  const a = AVAILABILITY[value];
-  return <span className={`rounded-full px-3 py-1 text-[13px] font-semibold ${a.className} ${className}`}>{a.label}</span>;
 }
 
 export function Chip({ children, className = "" }: { children: React.ReactNode; className?: string }) {

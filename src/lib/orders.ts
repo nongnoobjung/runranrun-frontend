@@ -1,5 +1,7 @@
 import "server-only";
 import { notFound, redirect } from "next/navigation";
+import { localePath } from "@/i18n/config";
+import { getLocale } from "@/i18n/server";
 import { api } from "./api";
 import type { Order } from "./types";
 
@@ -7,7 +9,7 @@ import type { Order } from "./types";
 export async function loadOrder(id: string, next: string): Promise<Order> {
   const res = await api<Order>(`/v1/orders/${encodeURIComponent(id)}`, { auth: true });
   if (!res.ok) {
-    if (res.status === 401) redirect(`/login?next=${next}`);
+    if (res.status === 401) redirect(localePath(await getLocale(), `/login?next=${next}`));
     notFound();
   }
   return res.data;

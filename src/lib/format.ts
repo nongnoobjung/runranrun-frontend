@@ -1,3 +1,4 @@
+import type { Locale } from "@/i18n/config";
 import type { QuestionType, ResultStatus } from "./types";
 
 /** Formats integer satang as baht: 120000 → "฿1,200", 110160 → "฿1,101.60". */
@@ -9,23 +10,41 @@ export function baht(satang: number): string {
   })}`;
 }
 
-const thaiDate = new Intl.DateTimeFormat("th-TH-u-ca-gregory", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Bangkok" });
-const thaiDay = new Intl.DateTimeFormat("th-TH-u-ca-gregory", { weekday: "long", timeZone: "Asia/Bangkok" });
-const thaiMonthShort = new Intl.DateTimeFormat("th-TH-u-ca-gregory", { month: "short", timeZone: "Asia/Bangkok" });
-const thaiTime = new Intl.DateTimeFormat("th-TH-u-ca-gregory", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Bangkok" });
-
 /** Event dates come from the API as YYYY-MM-DD (a calendar day in Bangkok). Noon keeps it on the same day in any zone. */
 function day(value: string): Date {
   return new Date(value.length === 10 ? `${value}T12:00:00+07:00` : value);
 }
 
-export const fmt = {
-  date: (v: string) => thaiDate.format(day(v)),
-  weekday: (v: string) => thaiDay.format(day(v)),
-  dayOfMonth: (v: string) => String(day(v).getUTCDate()).padStart(2, "0"),
-  monthShort: (v: string) => thaiMonthShort.format(day(v)),
-  time: (v: string) => thaiTime.format(new Date(v)),
-};
+// Thai keeps the Gregorian year (no Buddhist era); English reads the British way: "14 Feb 2027", 24-hour clock.
+const INTL_LOCALE: Record<Locale, string> = { th: "th-TH-u-ca-gregory", en: "en-GB" };
+
+function formatters(locale: Locale) {
+  const tag = INTL_LOCALE[locale];
+  const zone = { timeZone: "Asia/Bangkok" } as const;
+  const date = new Intl.DateTimeFormat(tag, { day: "numeric", month: "short", year: "numeric", ...zone });
+  const weekday = new Intl.DateTimeFormat(tag, { weekday: "long", ...zone });
+  const monthShort = new Intl.DateTimeFormat(tag, { month: "short", ...zone });
+  const time = new Intl.DateTimeFormat(tag, { hour: "2-digit", minute: "2-digit", hour12: false, ...zone });
+  return {
+    date: (v: string) => date.format(day(v)),
+    weekday: (v: string) => weekday.format(day(v)),
+    dayOfMonth: (v: string) => String(day(v).getUTCDate()).padStart(2, "0"),
+    monthShort: (v: string) => monthShort.format(day(v)),
+    time: (v: string) => time.format(new Date(v)),
+    /** Counts with thousands separators: 1,234. */
+    num: (n: number) => n.toLocaleString(locale === "th" ? "th-TH" : "en-US"),
+  };
+}
+
+const FORMATTERS: Record<Locale, ReturnType<typeof formatters>> = { th: formatters("th"), en: formatters("en") };
+
+/** Date, time and number formatting for a language. */
+export function fmtFor(locale: Locale) {
+  return FORMATTERS[locale];
+}
+
+/** Thai formatting, for the Thai-only organiser and admin pages. */
+export const fmt = FORMATTERS.th;
 
 /** 6728000 → "1:52:08"; under an hour "52:08". */
 export function duration(ms: number | null): string {
@@ -37,25 +56,31 @@ export function duration(ms: number | null): string {
   return h ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
-/** 313 → "5:13 /กม." */
-export function pace(secPerKm: number | null): string {
+/** 313 → "5:13 /กม." (English "5:13 /km") */
+export function pace(secPerKm: number | null, locale: Locale = "th"): string {
   if (!secPerKm) return "–";
-  return `${Math.floor(secPerKm / 60)}:${String(secPerKm % 60).padStart(2, "0")} /กม.`;
+  return `${Math.floor(secPerKm / 60)}:${String(secPerKm % 60).padStart(2, "0")} /${locale === "th" ? "กม." : "km"}`;
 }
 
-export const RESULT_STATUS_TH: Record<ResultStatus, string> = { FIN: "เข้าเส้นชัย", DNF: "ไม่ถึงเส้นชัย", DNS: "ไม่ได้ออกตัว", DQ: "ตัดสิทธิ์" };
+export const RESULT_STATUS: Record<Locale, Record<ResultStatus, string>> = {
+  th: { FIN: "เข้าเส้นชัย", DNF: "ไม่ถึงเส้นชัย", DNS: "ไม่ได้ออกตัว", DQ: "ตัดสิทธิ์" },
+  en: { FIN: "Finished", DNF: "Did not finish", DNS: "Did not start", DQ: "Disqualified" },
+};
+export const RESULT_STATUS_TH = RESULT_STATUS.th;
 
 export function distanceLabel(km: number): string {
   return `${km}K`;
 }
 
-/** A waiting room estimate in words: 45 → "ไม่ถึง 1 นาที", 400 → "ประมาณ 7 นาที", 5400 → "ประมาณ 1 ชม. 30 นาที". */
-export function waitLabel(seconds: number): string {
-  if (seconds < 60) return "ไม่ถึง 1 นาที";
+/** A waiting room estimate in words: 45 → "ไม่ถึง 1 นาที", 400 → "ประมาณ 7 นาที", 5400 → "ประมาณ 1 ชม. 30 นาที" (English "about 1 hr 30 min"). */
+export function waitLabel(seconds: number, locale: Locale = "th"): string {
+  const th = locale === "th";
+  if (seconds < 60) return th ? "ไม่ถึง 1 นาที" : "less than a minute";
   const minutes = Math.ceil(seconds / 60);
-  if (minutes < 60) return `ประมาณ ${minutes} นาที`;
+  if (minutes < 60) return th ? `ประมาณ ${minutes} นาที` : `about ${minutes} min`;
   const rest = minutes % 60;
-  return `ประมาณ ${Math.floor(minutes / 60).toLocaleString()} ชม.${rest ? ` ${rest} นาที` : ""}`;
+  const hours = Math.floor(minutes / 60).toLocaleString();
+  return th ? `ประมาณ ${hours} ชม.${rest ? ` ${rest} นาที` : ""}` : `about ${hours} hr${rest ? ` ${rest} min` : ""}`;
 }
 
 /** Minutes left as mm:ss, never negative. */
@@ -67,7 +92,7 @@ export function countdown(msLeft: number): string {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${ss}`;
 }
 
-const PROBLEM_TH: Record<string, string> = {
+const PROBLEM_TH = {
   SOLD_OUT: "ระยะนี้เต็มแล้ว",
   SIZE_SOLD_OUT: "ไซซ์นี้หมดแล้ว เลือกไซซ์อื่น",
   NO_PRICE_AVAILABLE: "ยังไม่เปิดขายราคาสำหรับระยะนี้",
@@ -158,12 +183,108 @@ const PROBLEM_TH: Record<string, string> = {
   NO_BANK_SUBMISSION: "ผู้จัดยังไม่ได้ส่งบัญชีรับเงินมาให้ยืนยัน",
 };
 
-/** A Thai message for an API problem code, falling back to the API's own detail. */
-export function problemMessage(p: { code: string; title: string; detail?: string; retryAfterSeconds?: unknown }): string {
+/** English for every code above: a missing one fails typecheck. */
+const PROBLEM_EN: Record<keyof typeof PROBLEM_TH, string> = {
+  SOLD_OUT: "This race is full",
+  SIZE_SOLD_OUT: "This size is sold out. Pick another size",
+  NO_PRICE_AVAILABLE: "Entries for this race are not on sale yet",
+  REGISTRATION_CLOSED: "Registration for this event is not open or has closed",
+  CHECKOUT_EXPIRED: "Your held place has expired. Please start again",
+  ALREADY_REGISTERED: "This ID number is already registered for this race",
+  COUPON_INVALID: "This discount code cannot be used for this event",
+  COUPON_USED_UP: "This discount code has been fully used",
+  COUPON_ALREADY_USED: "You have already used this code",
+  ORDER_NOT_PAYABLE: "This order can no longer be paid",
+  PAYMENT_GATEWAY_ERROR: "The payment system is having trouble. Please try again",
+  API_UNREACHABLE: "The system is not responding. Please try again",
+  UNAUTHORIZED: "Please sign in",
+  FORBIDDEN: "Your role in the organiser team cannot do this",
+  VALIDATION_FAILED: "Some fields are not valid",
+  EVENT_NOT_READY: "Registration cannot open yet. Fill in the missing details first",
+  INVALID_STATUS: "This cannot be done while the event is in its current status",
+  SLUG_TAKEN: "Another event already uses this link",
+  SLUG_LOCKED: "The link cannot change once registration has opened",
+  RACE_CODE_TAKEN: "This event already has a race with this short name",
+  CAPACITY_BELOW_SOLD: "Capacity cannot go below the places already sold or held",
+  BIBS_ISSUED: "Bibs from this range are already issued; only the last number can change",
+  BIB_RANGE_OVERLAP: "This bib range overlaps another race",
+  RACE_HAS_REGISTRATIONS: "This race has entries and cannot be deleted",
+  QUOTA_BELOW_SOLD: "This price's quota cannot go below what has been sold",
+  TIER_HAS_SALES: "People have bought at this price; change its end date instead of deleting it",
+  STOCK_BELOW_SOLD: "Stock cannot go below the shirts already sold or held",
+  COUPON_CODE_TAKEN: "This event already has this code",
+  COUPON_IN_USE: "This code has been used, so its discount cannot change. Turn it off and create a new one",
+  USAGE_BELOW_USED: "The number of uses cannot be less than those already used",
+  REGISTRATION_NOT_FOUND: "No such entry in this event",
+  ALREADY_PICKED_UP: "This runner has already picked up their kit",
+  NOT_CONFIRMED: "This runner has not paid yet, or the entry was cancelled",
+  WAITLIST_DISABLED: "This event has no waitlist",
+  RACE_NOT_FULL: "This race still has places. Register now",
+  ALREADY_IN_WAITLIST: "You are already on the waitlist for this race",
+  NO_OFFER: "It is not your turn yet, or the offer has expired",
+  NO_RESULTS: "No results to publish yet. Import a results file first",
+  RESULTS_NOT_PUBLISHED: "Results are not out yet",
+  BROADCAST_NOT_DRAFT: "This message has already been sent or scheduled and cannot be edited",
+  NO_RECIPIENTS: "No runners with an email in this group",
+  NO_EMAIL: "Your account has no email to send a test to",
+  NOT_SCHEDULED: "This message is no longer scheduled",
+  BIB_TAKEN: "Another runner already has this bib number",
+  REFUND_NOT_ALLOWED: "This event has no refund policy",
+  REFUND_CLOSED: "The refund deadline for this event has passed",
+  REFUND_IN_PROGRESS: "There is already a refund request for this entry",
+  REFUND_PENDING: "The runner has asked for a refund. Answer the request before handing over the kit",
+  REFUND_STATE: "This request has already been handled. Refresh to see its latest status",
+  ALREADY_INVITED: "This email already has an invitation waiting",
+  ALREADY_MEMBER: "This email is already in the team",
+  LAST_OWNER: "The team needs at least one owner. Add another owner first",
+  TOO_MANY_QUESTIONS: "An event form can have at most 30 extra questions",
+  QUESTION_IN_USE: "People have answered this question, so its type cannot change. Create a new question instead",
+  TRANSFER_NOT_ALLOWED: "This event does not allow transfers",
+  TRANSFER_CLOSED: "The transfer deadline for this event has passed",
+  TRANSFER_IN_PROGRESS: "This entry is already being transferred. Cancel that transfer first",
+  TRANSFER_UNAVAILABLE: "This entry can no longer be transferred; the kit may have been picked up or the entry cancelled",
+  SELF_TRANSFER: "Enter the email of the person receiving the entry, not your own",
+  RACE_CHANGE_NOT_ALLOWED: "This event does not allow race changes",
+  RACE_CHANGE_CLOSED: "The race change deadline for this event has passed",
+  RACE_CHANGE_IN_PROGRESS: "A race change is already waiting for payment",
+  RACE_NOT_ELIGIBLE: "The runner's age or gender does not meet this race's conditions",
+  UPCOMING_REGISTRATIONS: "You still have entries for races that have not happened yet. Ask for a refund or transfer them before closing your account",
+  PROFILE_EXISTS: "A saved runner with this ID number already exists. Edit that one instead",
+  TOO_MANY_PROFILES: "You can save up to 20 runners. Delete one you no longer use first",
+  RATE_LIMITED: "Lots of people are here at once. Wait a moment and try again",
+  QUEUE_REQUIRED: "This event needs you to queue before registering",
+  QUEUE_TOKEN_EXPIRED: "Your turn from the queue has run out. Please join the queue again",
+  QUEUE_UNAVAILABLE: "The queue is not available right now. Please try again",
+  WAITING_ROOM_UNAVAILABLE: "This server cannot run the queue yet. Contact the Kao team",
+  TOO_MANY_PENDING_TEAMS: "You already have 3 teams waiting for document checks. Finish their documents before opening a new team",
+  KYC_LOCKED: "The registered name and tax ID have been verified. Contact the Kao team if they need changing",
+  UNSUPPORTED_FILE_TYPE: "Only PDF, JPG or PNG files are supported",
+  UNSUPPORTED_MEDIA_TYPE: "Only PDF, JPG or PNG files are supported",
+  FILE_TOO_LARGE: "The file is larger than 10 MB",
+  FILE_REQUIRED: "Choose a file first",
+  EMPTY_FILE: "The file is empty",
+  UNSUPPORTED_IMAGE_TYPE: "Only JPG, PNG or WebP images are supported",
+  INVALID_IMAGE: "This image can't be opened. Try saving it again as JPG or PNG",
+  TOO_MANY_IMAGES: "This event already has as many images as it can. Delete ones you don't use first",
+  GALLERY_FULL: "The gallery can hold up to 30 photos",
+  TOO_MANY_PARTS: "Upload one file at a time",
+  TOO_MANY_DOCUMENTS: "A team can keep up to 20 documents. Delete old ones you no longer need first",
+  DOCUMENT_APPROVED: "Approved documents cannot be deleted",
+  NO_BANK_SUBMISSION: "The organiser has not sent a payout bank account to confirm yet",
+};
+
+const PROBLEMS: Record<Locale, Record<string, string>> = { th: PROBLEM_TH, en: PROBLEM_EN };
+
+/** A message for an API problem code in the page's language, falling back to the API's own detail. */
+export function problemMessage(
+  p: { code: string; title: string; detail?: string; retryAfterSeconds?: unknown },
+  locale: Locale = "th",
+): string {
   if (p.code === "RATE_LIMITED" && typeof p.retryAfterSeconds === "number") {
-    return `มีคนใช้งานพร้อมกันจำนวนมาก รอ ${p.retryAfterSeconds.toLocaleString()} วินาทีแล้วลองใหม่`;
+    const seconds = p.retryAfterSeconds.toLocaleString();
+    return locale === "th" ? `มีคนใช้งานพร้อมกันจำนวนมาก รอ ${seconds} วินาทีแล้วลองใหม่` : `Lots of people are here at once. Wait ${seconds} seconds and try again`;
   }
-  return PROBLEM_TH[p.code] ?? p.detail ?? p.title;
+  return PROBLEMS[locale][p.code] ?? p.detail ?? p.title;
 }
 
 export const PROVINCES: Record<string, string> = {
@@ -171,9 +292,14 @@ export const PROVINCES: Record<string, string> = {
   PKN: "ประจวบคีรีขันธ์", SKA: "สงขลา", CRI: "เชียงราย", CBI: "ชลบุรี", KBI: "กระบี่",
 };
 
-/** Thai name for the API's province code; unknown codes are shown as they are. */
-export function provinceName(code: string | null): string | null {
-  return code ? (PROVINCES[code] ?? code) : null;
+const PROVINCES_EN: Record<string, string> = {
+  BKK: "Bangkok", CNX: "Chiang Mai", HKT: "Phuket", KKN: "Khon Kaen", NMA: "Nakhon Ratchasima",
+  PKN: "Prachuap Khiri Khan", SKA: "Songkhla", CRI: "Chiang Rai", CBI: "Chon Buri", KBI: "Krabi",
+};
+
+/** The province's name for the API's province code; unknown codes are shown as they are. */
+export function provinceName(code: string | null, locale: Locale = "th"): string | null {
+  return code ? ((locale === "th" ? PROVINCES : PROVINCES_EN)[code] ?? code) : null;
 }
 
 export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
@@ -186,16 +312,19 @@ export const QUESTION_TYPE_LABEL: Record<QuestionType, string> = {
   date: "วันที่",
 };
 
-/** A runner's answer as text: choices joined, ticks as ใช่ / ไม่. */
-export function answerText(value: unknown): string {
+/** A runner's answer as text: choices joined, ticks as ใช่ / ไม่ (Yes / No). */
+export function answerText(value: unknown, locale: Locale = "th"): string {
   if (value === null || value === undefined || value === "") return "–";
   if (Array.isArray(value)) return value.join(", ");
-  if (typeof value === "boolean") return value ? "ใช่" : "ไม่";
+  if (typeof value === "boolean") return locale === "th" ? (value ? "ใช่" : "ไม่") : value ? "Yes" : "No";
   return String(value);
 }
 
-/** How a saved runner shows in lists and pickers: "ตัวฉัน · nickname · name". */
-export function profileLabel(p: { isSelf: boolean; nickname: string | null; firstNameTh: string | null; lastNameTh: string | null; firstNameEn: string; lastNameEn: string }): string {
-  const name = p.firstNameTh ? `${p.firstNameTh} ${p.lastNameTh ?? ""}`.trim() : `${p.firstNameEn} ${p.lastNameEn}`;
-  return [p.isSelf ? "ตัวฉัน" : null, p.nickname, name].filter(Boolean).join(" · ");
+/** How a saved runner shows in lists and pickers: "ตัวฉัน · nickname · name" (English: "Me · nickname · English name"). */
+export function profileLabel(
+  p: { isSelf: boolean; nickname: string | null; firstNameTh: string | null; lastNameTh: string | null; firstNameEn: string; lastNameEn: string },
+  locale: Locale = "th",
+): string {
+  const name = p.firstNameTh && locale === "th" ? `${p.firstNameTh} ${p.lastNameTh ?? ""}`.trim() : `${p.firstNameEn} ${p.lastNameEn}`;
+  return [p.isSelf ? (locale === "th" ? "ตัวฉัน" : "Me") : null, p.nickname, name].filter(Boolean).join(" · ");
 }

@@ -31,10 +31,11 @@ async function EventContent({ params }: Pick<PageProps<"/organizer/[orgId]/event
         actions={
           live && (
             <>
-              <Link href={`/events/${event.slug}`} target="_blank" className={smallGhostButtonClass}>
+              {/* /th/... and /en/... pick the language even after the other preview remembered its own. */}
+              <Link href={`/th/events/${event.slug}`} target="_blank" className={smallGhostButtonClass}>
                 ดูหน้างาน ↗
               </Link>
-              <Link href={`/events/${event.slug}?lang=en`} target="_blank" className={smallGhostButtonClass}>
+              <Link href={`/en/events/${event.slug}`} target="_blank" className={smallGhostButtonClass}>
                 English ↗
               </Link>
             </>

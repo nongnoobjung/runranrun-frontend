@@ -123,7 +123,7 @@ test("an organiser writes Thai and English content with pictures, and the event 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
   // 5. In English, with Thai where nothing English was written.
-  await page.goto(`/events/${ev.slug}?lang=en`);
+  await page.goto(`/en/events/${ev.slug}`);
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^River Run /);
   const aboutEn = page.getByRole("region", { name: "About the event" });
   await expect(aboutEn.getByText("An evening closed-road run by the river")).toBeVisible();

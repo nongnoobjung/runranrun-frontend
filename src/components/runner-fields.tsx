@@ -1,4 +1,7 @@
+"use client";
+
 import { inputClass } from "@/components/ui";
+import { useT } from "@/i18n/client";
 import type { FormQuestion } from "@/lib/types";
 
 /** A saved runner as the API returns it; the ID number is only ever its last four digits. */
@@ -22,42 +25,43 @@ export interface RunnerDefaults {
  * fields start from a saved runner and the ID number may stay empty: the API reads it from that profile.
  */
 export function RunnerFields({ prefix, err, saved }: { prefix: string; err: (name: string) => string | undefined; saved?: RunnerDefaults & { id: string } }) {
+  const t = useT().checkout.runner;
   const d: RunnerDefaults = saved ?? {};
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {saved && <input type="hidden" name={`${prefix}.profileId`} value={saved.id} />}
-      <Field label="ชื่อ (ไทย)" name={`${prefix}.firstNameTh`} defaultValue={d.firstNameTh ?? undefined} error={err(`${prefix}.firstNameTh`)} autoComplete="given-name" />
-      <Field label="นามสกุล (ไทย)" name={`${prefix}.lastNameTh`} defaultValue={d.lastNameTh ?? undefined} error={err(`${prefix}.lastNameTh`)} autoComplete="family-name" />
-      <Field label="First name (อังกฤษ, บนบิบ)" name={`${prefix}.firstNameEn`} defaultValue={d.firstNameEn} error={err(`${prefix}.firstNameEn`)} required />
-      <Field label="Last name (อังกฤษ)" name={`${prefix}.lastNameEn`} defaultValue={d.lastNameEn} error={err(`${prefix}.lastNameEn`)} required />
+      <Field label={t.firstNameTh} name={`${prefix}.firstNameTh`} defaultValue={d.firstNameTh ?? undefined} error={err(`${prefix}.firstNameTh`)} autoComplete="given-name" />
+      <Field label={t.lastNameTh} name={`${prefix}.lastNameTh`} defaultValue={d.lastNameTh ?? undefined} error={err(`${prefix}.lastNameTh`)} autoComplete="family-name" />
+      <Field label={t.firstNameEn} name={`${prefix}.firstNameEn`} defaultValue={d.firstNameEn} error={err(`${prefix}.firstNameEn`)} required />
+      <Field label={t.lastNameEn} name={`${prefix}.lastNameEn`} defaultValue={d.lastNameEn} error={err(`${prefix}.lastNameEn`)} required />
       <label className="flex flex-col gap-1">
-        <span className="text-[13px] text-muted">เพศ</span>
+        <span className="text-[13px] text-muted">{t.gender}</span>
         <select name={`${prefix}.gender`} defaultValue={d.gender ?? "male"} className={inputClass}>
-          <option value="male">ชาย</option>
-          <option value="female">หญิง</option>
-          <option value="other">ไม่ระบุ</option>
+          <option value="male">{t.male}</option>
+          <option value="female">{t.female}</option>
+          <option value="other">{t.otherGender}</option>
         </select>
       </label>
-      <Field label="วันเกิด" name={`${prefix}.birthDate`} type="date" defaultValue={d.birthDate} error={err(`${prefix}.birthDate`)} required />
+      <Field label={t.birthDate} name={`${prefix}.birthDate`} type="date" defaultValue={d.birthDate} error={err(`${prefix}.birthDate`)} required />
       <label className="flex flex-col gap-1">
-        <span className="text-[13px] text-muted">ประเภทเอกสาร</span>
+        <span className="text-[13px] text-muted">{t.idDocType}</span>
         <select name={`${prefix}.idDocType`} defaultValue={d.idDocType ?? "thai_id"} className={inputClass}>
-          <option value="thai_id">บัตรประชาชน</option>
-          <option value="passport">พาสปอร์ต</option>
+          <option value="thai_id">{t.thaiId}</option>
+          <option value="passport">{t.passport}</option>
         </select>
       </label>
       <Field
-        label="เลขบัตร / พาสปอร์ต"
+        label={t.idDocNumber}
         name={`${prefix}.idDocNumber`}
         error={err(`${prefix}.idDocNumber`)}
         required={!saved}
         inputMode="numeric"
-        placeholder={saved?.idDocLast4 ? `ใช้เลขที่บันทึกไว้ ••••${saved.idDocLast4}` : undefined}
+        placeholder={saved?.idDocLast4 ? t.savedIdPlaceholder(saved.idDocLast4) : undefined}
       />
-      <Field label="เบอร์โทร" name={`${prefix}.phone`} type="tel" defaultValue={d.phone ?? undefined} error={err(`${prefix}.phone`)} autoComplete="tel" />
-      <Field label="สัญชาติ (รหัส 2 ตัว)" name={`${prefix}.nationality`} defaultValue={d.nationality ?? "TH"} maxLength={2} error={err(`${prefix}.nationality`)} />
-      <Field label="ผู้ติดต่อฉุกเฉิน" name={`${prefix}.emergencyName`} defaultValue={d.emergencyName ?? undefined} error={err(`${prefix}.emergencyName`)} required />
-      <Field label="เบอร์ผู้ติดต่อฉุกเฉิน" name={`${prefix}.emergencyPhone`} type="tel" defaultValue={d.emergencyPhone ?? undefined} error={err(`${prefix}.emergencyPhone`)} required />
+      <Field label={t.phone} name={`${prefix}.phone`} type="tel" defaultValue={d.phone ?? undefined} error={err(`${prefix}.phone`)} autoComplete="tel" />
+      <Field label={t.nationality} name={`${prefix}.nationality`} defaultValue={d.nationality ?? "TH"} maxLength={2} error={err(`${prefix}.nationality`)} />
+      <Field label={t.emergencyName} name={`${prefix}.emergencyName`} defaultValue={d.emergencyName ?? undefined} error={err(`${prefix}.emergencyName`)} required />
+      <Field label={t.emergencyPhone} name={`${prefix}.emergencyPhone`} type="tel" defaultValue={d.emergencyPhone ?? undefined} error={err(`${prefix}.emergencyPhone`)} required />
     </div>
   );
 }
@@ -67,11 +71,12 @@ export function RunnerFields({ prefix, err, saved }: { prefix: string; err: (nam
  * p0.q.<key> one value, p0.qm.<key> several ticked choices, p0.qc.<key> a single tick.
  */
 export function Questions({ index, questions, err }: { index: number; questions: FormQuestion[]; err: (name: string) => string | undefined }) {
+  const t = useT().checkout.questions;
   if (questions.length === 0) return null;
   return (
     <fieldset className="flex flex-col gap-4 rounded-card bg-white p-5">
-      <legend className="sr-only">คำถามจากผู้จัด ผู้วิ่ง {index + 1}</legend>
-      <h3 className="text-lg font-semibold">คำถามจากผู้จัด</h3>
+      <legend className="sr-only">{t.legend(index + 1)}</legend>
+      <h3 className="text-lg font-semibold">{t.title}</h3>
       {questions.map((q) => {
         const name = `p${index}.q.${q.key}`;
         const error = err(name);
@@ -123,7 +128,7 @@ export function Questions({ index, questions, err }: { index: number; questions:
             {label}
             {q.type === "select" ? (
               <select name={name} defaultValue="" aria-invalid={Boolean(error)} className={cls}>
-                <option value="">เลือก</option>
+                <option value="">{t.choose}</option>
                 {q.options?.map((o) => (
                   <option key={o} value={o}>
                     {o}

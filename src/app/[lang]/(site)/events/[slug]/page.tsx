@@ -1,0 +1,286 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { EventBanner } from "@/components/banner";
+import { Markdown } from "@/components/markdown";
+import { ScrollIntoView } from "@/components/scroll-into-view";
+import { AvailabilityPill, buttonClass, Chip } from "@/components/ui";
+import type { Dict } from "@/i18n/dictionaries";
+import Link from "@/i18n/link";
+import { getLocale, getT } from "@/i18n/server";
+import { api } from "@/lib/api";
+import { pick } from "@/lib/content";
+import { baht, fmtFor } from "@/lib/format";
+import { getQueueToken, queueTokenExpiry } from "@/lib/session";
+import type { EventDetail } from "@/lib/types";
+import { Gallery } from "./gallery";
+import { RacePicker } from "./race-picker";
+
+async function loadEvent(slug: string): Promise<EventDetail> {
+  const res = await api<EventDetail>(`/v1/events/${encodeURIComponent(slug)}`);
+  if (!res.ok) {
+    if (res.status === 404 || res.status === 422) notFound();
+    throw new Error(res.problem.title);
+  }
+  return res.data;
+}
+
+export async function generateMetadata({ params }: PageProps<"/[lang]/events/[slug]">): Promise<Metadata> {
+  const { slug } = await params;
+  const [res, locale] = await Promise.all([api<EventDetail>(`/v1/events/${encodeURIComponent(slug)}`), getLocale()]);
+  if (!res.ok) return {};
+  const cover = res.data.coverImageUrl;
+  return {
+    title: pick(res.data.name, locale),
+    description: pick(res.data.summary, locale) ?? undefined,
+    openGraph: cover ? { images: [cover] } : undefined,
+  };
+}
+
+export default function EventPage({ params }: PageProps<"/[lang]/events/[slug]">) {
+  return (
+    <Suspense fallback={<div className="mx-4 h-[380px] animate-pulse rounded-panel bg-tint" aria-busy="true" />}>
+      <EventContent params={params} />
+    </Suspense>
+  );
+}
+
+async function EventContent({ params }: Pick<PageProps<"/[lang]/events/[slug]">, "params">) {
+  const { slug } = await params;
+  const [e, t, locale] = await Promise.all([loadEvent(slug), getT(), getLocale()]);
+  const p = t.events.page;
+  const fmt = fmtFor(locale);
+  const name = pick(e.name, locale);
+  const summary = pick(e.summary, locale);
+  const description = pick(e.description, locale);
+  const rules = pick(e.rules, locale);
+  const routeMaps = e.races.filter((r) => r.routeMapUrl);
+  const shirt = e.products.find((p) => p.type === "shirt");
+  const best = e.races.filter((r) => r.priceSatang !== null);
+  const totalLeft = e.races.reduce((s, r) => s + r.available, 0);
+  // With a waiting room the race picker only opens for a runner the queue has let in
+  // (unless nothing is left to queue for: then it still offers the waitlist).
+  const admittedUntil = e.policy.waitingRoom ? queueTokenExpiry(await getQueueToken(e.id)) : null;
+  const queueFirst = e.policy.waitingRoom && !admittedUntil && e.races.some((r) => r.available > 0 && r.availability !== "closed");
+
+  return (
+    <>
+      <section className="px-4">
+        <EventBanner
+          slug={e.slug}
+          type={e.type}
+          title=""
+          imageUrl={e.coverImageUrl}
+          className="mx-auto h-[340px] max-w-[1360px] rounded-panel sm:h-[380px]"
+        >
+          {/* A photo can be light at the bottom; the shade keeps the white title readable on any cover. */}
+          {e.coverImageUrl && <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent" />}
+          <div className="absolute inset-x-6 bottom-8 flex flex-col gap-3 text-white sm:inset-x-12 sm:bottom-10">
+            <div className="flex flex-wrap gap-2">
+              {e.races.some((r) => r.availability === "almost_full") && <AvailabilityPill value="almost_full" />}
+              <span className="rounded-full bg-white/20 px-3.5 py-1 text-sm">{t.events.types[e.type]}</span>
+            </div>
+            <h1 className="text-4xl font-bold leading-tight break-words drop-shadow sm:text-[56px]">{name}</h1>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-[17px] text-white/90">
+              <span>
+                {fmt.weekday(e.eventDate)} {fmt.date(e.eventDate)}
+              </span>
+              {e.venue && <span>{e.venue}</span>}
+            </div>
+            {e.resultsPublishedAt && (
+              <Link href={`/events/${e.slug}/results`} className="self-start rounded-full bg-white px-5 py-2.5 font-semibold text-ink no-underline">
+                {p.seeResults}
+              </Link>
+            )}
+          </div>
+        </EventBanner>
+      </section>
+
+      <div className="mx-auto flex max-w-[1240px] flex-wrap items-start gap-10 px-4 pt-10 sm:px-7">
+        <div className="flex min-w-0 flex-[999_1_620px] flex-col gap-10">
+          <section aria-label={p.factsLabel} className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-3">
+            <Fact label={p.raceDay} value={fmt.date(e.eventDate)} sub={fmt.weekday(e.eventDate)} />
+            <Fact label={p.races} value={e.races.map((r) => r.code).join(" · ")} sub={p.raceCount(e.races.length)} />
+            <Fact
+              label={p.closes}
+              value={e.registration.closesAt ? fmt.date(e.registration.closesAt) : p.whenFull}
+              sub={p.orWhenFull}
+            />
+            <Fact label={p.placesLeft} value={p.places(totalLeft)} sub={p.placesNote} />
+          </section>
+
+          {(summary || description) && (
+            <section aria-labelledby="about" className="flex flex-col gap-2.5">
+              <h2 id="about" className="text-[26px] font-bold">
+                {p.about}
+              </h2>
+              {summary && <p className="max-w-[700px] text-lg font-medium text-ink">{summary}</p>}
+              {description && <Markdown>{description}</Markdown>}
+            </section>
+          )}
+
+          {e.gallery.length > 0 && (
+            <section aria-labelledby="photos" className="flex min-w-0 flex-col gap-3.5">
+              <h2 id="photos" className="text-[26px] font-bold">
+                {p.photos}
+              </h2>
+              <Gallery images={e.gallery.map((g) => ({ url: g.url, width: g.width, height: g.height, caption: pick(g.caption, locale) }))} />
+            </section>
+          )}
+
+          <section className="flex flex-col gap-3.5">
+            <h2 className="text-[26px] font-bold">{p.racesAndTimes}</h2>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-3">
+              {e.races.map((r) => (
+                <div key={r.id} className="flex flex-col gap-1.5 rounded-[20px] border-[1.5px] border-line p-4">
+                  <Chip className="self-start text-lg">{r.code}</Chip>
+                  <Row k={p.distance} v={p.km(r.distanceKm)} />
+                  {r.startAt && <Row k={p.start} v={fmt.time(r.startAt)} />}
+                  {r.cutoffMinutes && <Row k={p.cutoff} v={p.hours(`${Math.floor(r.cutoffMinutes / 60)}:${String(r.cutoffMinutes % 60).padStart(2, "0")}`)} />}
+                  {r.ageMin !== null && <span className="text-[13px] text-muted">{p.minAge(r.ageMin)}</span>}
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {shirt && shirt.variants.length > 0 && (
+            <section className="flex flex-col gap-3.5">
+              <h2 className="text-[26px] font-bold">{shirt.name}</h2>
+              <p className="text-sm text-muted">{p.shirtNote}</p>
+              <div className="flex flex-wrap gap-2">
+                {shirt.variants.map((v) => (
+                  <span key={v.id} className={`rounded-2xl px-4 py-2 text-center leading-tight ${v.available === 0 ? "bg-tint text-muted line-through" : "bg-ice"}`}>
+                    <b className="block">{v.label}</b>
+                    <span className="text-xs">{v.attributes.chest_in ? `${v.attributes.chest_in}"` : ""}</span>
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {routeMaps.length > 0 && (
+            <section aria-labelledby="route-maps" className="flex flex-col gap-3.5">
+              <h2 id="route-maps" className="text-[26px] font-bold">
+                {p.routeMap}
+              </h2>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(240px,1fr))] gap-3">
+                {routeMaps.map((r) => (
+                  <a key={r.id} href={r.routeMapUrl!} target="_blank" className="flex flex-col gap-2 rounded-[20px] border-[1.5px] border-line p-3 no-underline">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- served by our own /media route */}
+                    <img src={r.routeMapUrl!} alt={p.routeMapOf(r.code)} loading="lazy" className="aspect-[4/3] w-full rounded-[14px] bg-tint object-contain" />
+                    <Chip className="self-start">{r.code}</Chip>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {rules && (
+            <section aria-labelledby="rules" className="flex flex-col gap-2.5">
+              <h2 id="rules" className="text-[26px] font-bold">
+                {p.rules}
+              </h2>
+              <Markdown>{rules}</Markdown>
+            </section>
+          )}
+
+          {e.faq.length > 0 && (
+            <section aria-labelledby="faq" className="flex flex-col gap-2.5">
+              <h2 id="faq" className="text-[26px] font-bold">
+                {p.faq}
+              </h2>
+              {e.faq.map((f) => (
+                <details key={f.q.th} className="rounded-[18px] bg-tint px-5 py-4">
+                  <summary className="cursor-pointer font-semibold">{pick(f.q, locale)}</summary>
+                  <p className="mt-2 whitespace-pre-line text-ink/85">{pick(f.a, locale)}</p>
+                </details>
+              ))}
+            </section>
+          )}
+        </div>
+
+        <aside id="register" aria-label={p.registerLabel} className="flex min-w-0 flex-[1_1_360px] scroll-mt-6 flex-col gap-4 lg:sticky lg:top-6">
+          <div className="flex flex-col gap-3 rounded-[28px] border border-line bg-white p-5 shadow-[0_18px_40px_rgba(14,42,71,.12)]">
+            <div className="flex items-center justify-between">
+              <h2 className="text-[22px] font-bold">{p.chooseRace}</h2>
+              {best.length > 0 && <Chip className="text-[13px]">{p.from(baht(Math.min(...best.map((r) => r.priceSatang!))))}</Chip>}
+            </div>
+            {queueFirst ? (
+              <QueueEntry slug={e.slug} races={e.races} t={t} />
+            ) : (
+              <>
+                {admittedUntil && (
+                  <p role="status" className="scroll-mt-4 rounded-2xl bg-ok-soft px-4 py-3 text-sm text-ok">
+                    <ScrollIntoView hash="register" />
+                    <b className="font-semibold">{t.events.queue.admitted}</b>
+                    {t.events.queue.admittedUntil(fmt.time(admittedUntil.toISOString()))}
+                  </p>
+                )}
+                <RacePicker eventId={e.id} slug={e.slug} races={e.races} waitlist={e.policy.waitlist} />
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-3.5 rounded-card bg-tint p-4">
+            <span aria-hidden className="grid h-12 w-12 flex-none place-items-center rounded-full bg-ink font-bold text-white">
+              {initials(e.organizer.name)}
+            </span>
+            <span className="leading-snug">
+              <span className="text-[13px] text-muted">{p.organisedBy}</span>
+              <br />
+              <b className="font-semibold">{e.organizer.name}</b>
+            </span>
+          </div>
+        </aside>
+      </div>
+    </>
+  );
+}
+
+/** Instead of the race picker while the event uses a waiting room: what is on offer, and the way into the queue. */
+function QueueEntry({ slug, races, t }: { slug: string; races: EventDetail["races"]; t: Dict }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <ul className="flex flex-col gap-2" aria-label={t.events.queue.racesLabel}>
+        {races.map((r) => (
+          <li key={r.id} className="flex items-center justify-between gap-3 rounded-[18px] border-[1.5px] border-line px-4 py-3">
+            <b className="text-lg font-bold">{r.code}</b>
+            <span className="text-right text-sm leading-tight">
+              <b className="block text-base">{r.priceSatang !== null ? baht(r.priceSatang) : "–"}</b>
+              <span className={r.available <= 0 ? "text-bad" : "text-muted"}>{r.available <= 0 ? t.events.picker.full : t.events.picker.left(r.available)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="rounded-2xl bg-ice px-4 py-3 text-sm">
+        {t.events.queue.busy}
+      </p>
+      <Link href={`/events/${slug}/queue`} className={`${buttonClass} min-h-14 rounded-[18px] text-[17px] no-underline`}>
+        {t.events.queue.join}
+      </Link>
+    </div>
+  );
+}
+
+function Fact({ label, value, sub }: { label: string; value: string; sub: string }) {
+  return (
+    <div className="flex flex-col rounded-[20px] bg-tint px-4 py-3.5">
+      <span className="text-[13px] text-muted">{label}</span>
+      <b className="text-xl font-semibold">{value}</b>
+      <span className="text-[13px] text-muted">{sub}</span>
+    </div>
+  );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <span className="flex justify-between text-[15px]">
+      <span className="text-muted">{k}</span>
+      <b className="font-semibold">{v}</b>
+    </span>
+  );
+}
+
+function initials(name: string): string {
+  const words = name.split(/\s+/).filter(Boolean);
+  return (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)).toUpperCase();
+}
