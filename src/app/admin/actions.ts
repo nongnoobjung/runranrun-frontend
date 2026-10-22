@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { problemState, type OrgFormState } from "@/lib/org-actions";
 
 /** Calls a write endpoint under /v1/admin and refreshes the page, or turns the problem into form state. */
-async function adminMutation(path: string, method: "POST" | "PATCH" | "PUT", body?: unknown): Promise<OrgFormState | null> {
+async function adminMutation(path: string, method: "POST" | "PATCH" | "PUT" | "DELETE", body?: unknown): Promise<OrgFormState | null> {
   const res = await api(`/v1/admin${path}`, { method, body, auth: true });
   if (!res.ok) {
     if (res.status === 401) redirect("/login?next=/admin");
@@ -85,4 +85,57 @@ export async function markSettlementPaid(settlementId: string, _prev: OrgFormSta
 
 export async function voidSettlement(settlementId: string): Promise<OrgFormState> {
   return (await adminMutation(`/settlements/${settlementId}/void`, "POST")) ?? { notice: "ยกเลิกรอบแล้ว ยอดไปรวมรอบถัดไป" };
+}
+
+/**
+ * The fee form's fields as the API wants them: percent → basis points, baht → satang, and a start day (Thai time)
+ * after today, or now when left empty.
+ */
+function feeBody(fd: FormData): { body: { percentBps: number; fixedPerRegistrationSatang: number; effectiveFrom?: string } } | { state: OrgFormState } {
+  const fieldErrors: Record<string, string> = {};
+  const percent = Number(text(fd, "percent") || "0");
+  const fixed = Number(text(fd, "fixedBaht") || "0");
+  const from = text(fd, "effectiveFrom");
+  if (!Number.isFinite(percent) || percent < 0 || percent > 100) fieldErrors.percent = "0–100%";
+  if (!Number.isFinite(fixed) || fixed < 0 || fixed > 10_000) fieldErrors.fixedBaht = "0–10,000 บาท";
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Bangkok" }).format(new Date());
+  if (from && (!/^\d{4}-\d{2}-\d{2}$/.test(from) || from <= today)) fieldErrors.effectiveFrom = "เลือกวันหลังวันนี้ หรือเว้นว่างให้มีผลทันที";
+  if (Object.keys(fieldErrors).length) return { state: { fieldErrors } };
+  return {
+    body: {
+      percentBps: Math.round(percent * 100),
+      fixedPerRegistrationSatang: Math.round(fixed * 100),
+      ...(from ? { effectiveFrom: `${from}T00:00:00+07:00` } : {}),
+    },
+  };
+}
+
+export async function setDefaultFee(_prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
+  const fee = feeBody(fd);
+  if ("state" in fee) return fee.state;
+  return (await adminMutation("/platform-fees/default", "PUT", fee.body)) ?? { notice: fee.body.effectiveFrom ? "ตั้งอัตราใหม่แล้ว มีผลตามวันที่เลือก" : "ตั้งอัตราใหม่แล้ว คำสั่งซื้อใหม่ใช้อัตรานี้ทันที" };
+}
+
+export async function setOrgFee(orgId: string, _prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
+  const fee = feeBody(fd);
+  if ("state" in fee) return fee.state;
+  return (await adminMutation(`/organizations/${orgId}/platform-fee`, "PUT", fee.body)) ?? { notice: fee.body.effectiveFrom ? "ตั้งอัตราใหม่แล้ว มีผลตามวันที่เลือก" : "ตั้งอัตราใหม่แล้ว คำสั่งซื้อใหม่ใช้อัตรานี้ทันที" };
+}
+
+export async function clearOrgFee(orgId: string): Promise<OrgFormState> {
+  return (await adminMutation(`/organizations/${orgId}/platform-fee`, "DELETE")) ?? { notice: "กลับไปใช้อัตรา default แล้ว" };
+}
+
+export async function suspendUser(userId: string, _prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
+  const reason = text(fd, "reason");
+  if (!reason) return { fieldErrors: { reason: "ใส่เหตุผล" } };
+  return (await adminMutation(`/users/${userId}/suspend`, "POST", { reason })) ?? { notice: "ระงับบัญชีแล้ว ผู้ใช้ถูกออกจากระบบทันที" };
+}
+
+export async function reactivateUser(userId: string): Promise<OrgFormState> {
+  return (await adminMutation(`/users/${userId}/reactivate`, "POST")) ?? { notice: "ยกเลิกการระงับแล้ว เข้าสู่ระบบได้อีกครั้ง" };
+}
+
+export async function setUserRole(userId: string, _prev: OrgFormState, fd: FormData): Promise<OrgFormState> {
+  return (await adminMutation(`/users/${userId}/platform-role`, "PUT", { role: text(fd, "role") })) ?? { notice: "เปลี่ยนสิทธิ์แล้ว" };
 }
