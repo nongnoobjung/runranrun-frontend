@@ -33,7 +33,7 @@ async function AccountLinks() {
 export async function SiteHeader() {
   const t = await getT();
   return (
-    <header className="bg-white">
+    <header className="bg-white print:hidden">
       <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-x-9 gap-y-3 px-4 py-4 sm:px-7">
         <Logo />
         <nav aria-label={t.common.nav.label} className="hidden flex-1 gap-7 text-[15px] md:flex">
@@ -61,7 +61,7 @@ export async function SiteHeader() {
 export async function SiteFooter() {
   const t = await getT();
   return (
-    <footer className="mt-16 bg-tint">
+    <footer className="mt-16 bg-tint print:hidden">
       <div className="mx-auto flex max-w-[1240px] flex-wrap gap-10 px-4 py-9 text-sm text-muted sm:px-7">
         <div className="flex flex-[2_1_260px] flex-col gap-1.5">
           <b className="text-xl text-ink">{t.common.brand}</b>

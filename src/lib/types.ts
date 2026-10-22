@@ -165,6 +165,8 @@ export interface MyRegistration {
   race: { code: string; distanceKm: number; startAt: string | null; cutoffMinutes: number | null };
   event: { slug: string; name: string; eventDate: string; venue: string | null; coverImageUrl: string | null };
   orderNo: string;
+  /** The order whose receipt this user can open (they paid for it), else null. */
+  receiptOrderId: string | null;
 }
 
 /** Thai bank codes, for refund and payout accounts. */
@@ -348,4 +350,53 @@ export interface QueueStatus {
   estimatedWaitSeconds: number | null;
   opensAt: string | null;
   admission: { token: string; expiresAt: string } | null;
+}
+
+export type ReceiptDocType = "receipt" | "abbreviated_tax_invoice" | "tax_invoice";
+
+/** Billing details for a full tax invoice. branch: "00000" head office, a 5-digit branch, or null for a person. */
+export interface Billing {
+  name: string;
+  taxId: string;
+  branch: string | null;
+  address: string;
+}
+
+/** GET /v1/orders/:id/receipt — the document in force for a paid order. */
+export interface Receipt {
+  order: {
+    id: string;
+    orderNo: string;
+    status: Order["status"];
+    paidAt: string;
+    event: { slug: string; name: { th: string; en: string | null }; eventDate: string };
+    subtotalSatang: number;
+    discountSatang: number;
+    feeSatang: number;
+    totalSatang: number;
+    refundedSatang: number;
+  };
+  items: { type: string; description: string; quantity: number; unitPriceSatang: number; discountSatang: number; totalSatang: number }[];
+  document: {
+    id: string;
+    number: string;
+    type: ReceiptDocType;
+    issuedAt: string;
+    issuer: {
+      kind: "organizer" | "platform";
+      name: string;
+      taxId: string | null;
+      branch: string | null;
+      address: string;
+      vatRegistered: boolean;
+      onBehalfOf: string | null;
+    };
+    buyer: { name: string; taxId: string | null; branch: string | null; address: string };
+    subtotalSatang: number;
+    vatSatang: number;
+    totalSatang: number;
+  };
+  replaced: { number: string; type: ReceiptDocType; issuedAt: string }[];
+  refund: { status: "full" | "partial"; amountSatang: number } | null;
+  canRequestTaxInvoice: boolean;
 }

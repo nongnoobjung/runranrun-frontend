@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { buttonClass } from "@/components/ui";
+import { buttonClass, ghostButtonClass } from "@/components/ui";
 import { localePath } from "@/i18n/config";
 import Link from "@/i18n/link";
 import { getLocale, getT } from "@/i18n/server";
@@ -61,9 +61,14 @@ async function Success({ params }: Pick<PageProps<"/[lang]/orders/[id]/success">
           </div>
         ))}
       </div>
-      <Link href="/me/events" className={`${buttonClass} w-full no-underline`}>
-        {s.viewTicket}
-      </Link>
+      <div className="flex w-full flex-col gap-2.5 sm:flex-row">
+        <Link href="/me/events" className={`${buttonClass} flex-1 no-underline`}>
+          {s.viewTicket}
+        </Link>
+        <Link href={`/orders/${order.id}/receipt`} className={`${ghostButtonClass} flex-1 no-underline`}>
+          {s.viewReceipt}
+        </Link>
+      </div>
       <p className="text-sm text-muted">{s.receipt}</p>
     </div>
   );
@@ -96,6 +101,9 @@ async function ChangePaid({ order, purpose }: { order: Order; purpose: Extract<O
           {s.myEvents}
         </Link>
       )}
+      <Link href={`/orders/${order.id}/receipt`} className="text-sm text-muted">
+        {s.viewReceipt}
+      </Link>
     </div>
   );
 }

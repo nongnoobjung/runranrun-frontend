@@ -6,6 +6,7 @@ import { Countdown } from "@/components/countdown";
 import { Field, Questions } from "@/components/runner-fields";
 import { ConsentFields } from "@/components/consent-fields";
 import { SavedRunnerFields } from "@/components/saved-runner";
+import { TaxInvoiceFields } from "@/components/tax-invoice-fields";
 import { buttonClass, ErrorNote } from "@/components/ui";
 import { useT } from "@/i18n/client";
 import { baht } from "@/lib/format";
@@ -46,7 +47,10 @@ export function CheckoutForm({
   /** The user's saved runners; the first runner starts as their own profile, if they saved one. */
   profiles: RunnerProfile[];
 }) {
-  const t = useT().checkout.form;
+  const dict = useT();
+  const t = dict.checkout.form;
+  const tax = dict.receipts.tax;
+  const [wantInvoice, setWantInvoice] = useState(false);
   const [state, formAction, pending] = useActionState<FormState, FormData>(submitCheckout, {});
   const [, startTransition] = useTransition();
   const [active, setActive] = useState(0);
@@ -165,6 +169,24 @@ export function CheckoutForm({
           <Field label={t.buyerPhone} name="buyer.phone" type="tel" error={err("buyer.phone")} required autoComplete="tel" />
         </div>
         <Field label={t.coupon} name="coupon" placeholder={t.couponPlaceholder} />
+      </section>
+
+      <section className="flex flex-col gap-3 rounded-card bg-white p-5">
+        <label className="flex items-start gap-3 text-[15px]">
+          <input
+            type="checkbox"
+            name="billing.want"
+            value="1"
+            checked={wantInvoice}
+            onChange={(e) => setWantInvoice(e.target.checked)}
+            className="mt-0.5 h-5 w-5 flex-none accent-brand"
+          />
+          <span>
+            {tax.want}
+            <span className="block text-sm text-muted">{tax.checkoutHint}</span>
+          </span>
+        </label>
+        {wantInvoice && <TaxInvoiceFields errors={state.fieldErrors} />}
       </section>
 
       <ConsentFields organizer={organizer} error={err("consent")} />

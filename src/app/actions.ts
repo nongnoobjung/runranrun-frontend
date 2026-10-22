@@ -7,6 +7,7 @@ import { localePath, type Locale } from "@/i18n/config";
 import { dictionary, type Dict } from "@/i18n/dictionaries";
 import { actionLocale } from "@/i18n/server";
 import { api } from "@/lib/api";
+import { billingOf } from "@/lib/billing";
 import { problemMessage } from "@/lib/format";
 import { clearQueueToken, clearToken, getQueueToken, getToken, setQueueToken, setToken } from "@/lib/session";
 import type { ApiProblem, CheckoutSession, Order, Payment, QueueStatus } from "@/lib/types";
@@ -39,6 +40,11 @@ function go(locale: Locale, path: string): never {
 
 type ActionText = Dict["actions"];
 
+/** Emails to the account are written in the language the runner last used here (PUT /v1/me/locale). */
+async function rememberLocale(locale: Locale, token?: string): Promise<void> {
+  await api("/v1/me/locale", { method: "PUT", body: { locale }, ...(token ? { headers: { authorization: `Bearer ${token}` } } : { auth: true }) });
+}
+
 // ---------------------------------------------------------------- auth
 
 export async function login(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -49,6 +55,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   const res = await api<{ accessToken: string; expiresIn: number }>("/v1/dev/login", { method: "POST", body: { email: email.data } });
   if (!res.ok) return { error: problem(res.problem) };
   await setToken(res.data.accessToken, res.data.expiresIn);
+  await rememberLocale(locale, res.data.accessToken);
   go(locale, safeNext(formData.get("next")));
 }
 
@@ -111,7 +118,7 @@ function toFieldErrors(errors: { path: string; message: string }[] | undefined, 
     }
     const m = e.path.match(/^participants\.(\d+)\.(?:runner\.)?(\w+)/);
     if (m) out[`p${m[1]}.${m[2]}`] = e.message;
-    else if (e.path.startsWith("buyer.")) out[e.path] = e.message;
+    else if (e.path.startsWith("buyer.") || e.path.startsWith("billing.")) out[e.path] = e.message;
   }
   return out;
 }
@@ -180,6 +187,7 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
   const buyer = { name: get("buyer.name"), email: get("buyer.email"), phone: get("buyer.phone") };
   for (const [k, v] of Object.entries(buyer)) if (!v) fieldErrors[`buyer.${k}`] = t.required;
   const consents = consentsOf(formData, fieldErrors, t);
+  const billing = formData.get("billing.want") === "1" ? billingOf(formData, "billing", fieldErrors, dictionary(locale).receipts.tax.errors) : undefined;
   if (Object.keys(fieldErrors).length) return { error: t.completeCheckout, fieldErrors };
 
   // Hold the chosen shirt sizes first; a sold-out size comes back before the order is created.
@@ -194,7 +202,8 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
     if (!sizes.ok) return { error: problem(sizes.problem) };
   }
 
-  const body = { checkoutSessionId: sessionId, couponCode: get("coupon"), buyer, participants, consents };
+  const body = { checkoutSessionId: sessionId, couponCode: get("coupon"), buyer, billing, participants, consents };
+  await rememberLocale(locale);
   // Same form data → same key, so a double submit or a retry after a network error cannot create two orders.
   const key = createHash("sha256").update(JSON.stringify(body)).digest("hex").slice(0, 40);
   const res = await api<Order>("/v1/orders", { method: "POST", auth: true, body, idempotencyKey: `order-${key}` });
@@ -206,6 +215,20 @@ export async function submitCheckout(_prev: FormState, formData: FormData): Prom
 }
 
 // ---------------------------------------------------------------- payment
+
+/** Turns the order's receipt into a full tax invoice made out to the details in the form. */
+export async function requestTaxInvoice(orderId: string, _prev: FormState, formData: FormData): Promise<FormState> {
+  const { problem, locale } = await inLocale();
+  const msg = dictionary(locale).receipts.tax.errors;
+  const fieldErrors: Record<string, string> = {};
+  const billing = billingOf(formData, "billing", fieldErrors, msg);
+  if (Object.keys(fieldErrors).length) return { error: msg.complete, fieldErrors };
+  const res = await api(`/v1/orders/${encodeURIComponent(orderId)}/tax-invoice`, { method: "POST", auth: true, body: billing });
+  if (!res.ok) {
+    return { error: problem(res.problem), fieldErrors: Object.fromEntries((res.problem.errors ?? []).map((e) => [`billing.${e.path}`, e.message])) };
+  }
+  go(locale, `/orders/${orderId}/receipt`);
+}
 
 export async function createPayment(orderId: string, method: "promptpay"): Promise<{ payment?: Payment; error?: string }> {
   const { problem } = await inLocale();
