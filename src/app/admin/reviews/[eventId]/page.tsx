@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { Card, PageHeader, Pill, dangerButtonClass } from "@/components/backoffice";
+import { Card, PageHeader, Pill, dangerButtonClass, smallGhostButtonClass } from "@/components/backoffice";
 import { approveEvent, rejectEvent } from "@/app/admin/actions";
 import { adminGet, adminMe, ORG_STATUS, type AdminEvent } from "@/lib/admin";
 import { baht, fmt, provinceName } from "@/lib/format";
@@ -49,6 +49,11 @@ async function Review({ params }: Pick<Props, "params">) {
             <Link href={`/admin/organizations/${org.id}`}>{org.nameTh}</Link>
             <Pill label={ORG_STATUS[org.status].label} className={ORG_STATUS[org.status].className} />
           </span>
+        }
+        actions={
+          <Link href={`/admin/audit?eventId=${e.id}`} className={smallGhostButtonClass}>
+            ดูบันทึกการทำงาน
+          </Link>
         }
       />
 
