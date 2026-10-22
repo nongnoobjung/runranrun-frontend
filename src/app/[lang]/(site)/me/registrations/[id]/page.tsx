@@ -100,7 +100,15 @@ async function Ticket({ params, searchParams }: Pick<PageProps<"/[lang]/me/regis
         <dt className="text-muted">{tt.registrationNo}</dt>
         <dd className="text-right">{r.registrationNo}</dd>
         <dt className="text-muted">{tt.order}</dt>
-        <dd className="text-right">{r.orderNo}</dd>
+        <dd className="text-right">
+          {r.orderNo}
+          {r.receiptOrderId && (
+            <>
+              {" · "}
+              <Link href={`/orders/${r.receiptOrderId}/receipt`}>{tt.receipt}</Link>
+            </>
+          )}
+        </dd>
         {r.event.venue && (
           <>
             <dt className="text-muted">{tt.venue}</dt>

@@ -5,6 +5,19 @@ const EVENT = "Riverside Night Run 2027";
 const idNumber = () => `1${Date.now().toString().slice(-9)}${Math.floor(Math.random() * 900 + 100)}`;
 const newEmail = (tag: string) => `e2e-pdpa-${tag}-${Date.now()}-${Math.floor(Math.random() * 1e6)}@example.com`;
 
+/**
+ * Ticks "I understand" and presses close, retrying until `then` holds. A tick made before the page has hydrated is
+ * reset by React, which left the button disabled now and then on CI.
+ */
+async function closeAccount(page: Page, then: () => Promise<void>) {
+  const tick = page.getByRole("checkbox", { name: /เข้าใจแล้วว่าปิดบัญชีแล้วกู้คืนไม่ได้/ });
+  await expect(async () => {
+    await tick.check();
+    await page.getByRole("button", { name: "ปิดบัญชี" }).click({ timeout: 2_000 });
+    await then();
+  }).toPass({ timeout: 20_000 });
+}
+
 async function signIn(page: Page, email: string, next: string) {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("อีเมล").fill(email);
@@ -62,18 +75,14 @@ test("a runner agrees before registering, then manages their consents and data",
   expect(data.registrations).toEqual([expect.objectContaining({ first_name_en: "PDPA", event: expect.stringContaining("Riverside") })]);
 
   // A place for an upcoming race keeps the account open.
-  await page.getByRole("checkbox", { name: /เข้าใจแล้วว่าปิดบัญชีแล้วกู้คืนไม่ได้/ }).check();
-  await page.getByRole("button", { name: "ปิดบัญชี" }).click();
-  await expect(page.getByText("ยังมีงานที่สมัครไว้และยังไม่ถึงวันแข่ง")).toBeVisible();
+  await closeAccount(page, () => expect(page.getByText("ยังมีงานที่สมัครไว้และยังไม่ถึงวันแข่ง")).toBeVisible({ timeout: 3_000 }));
 });
 
 test("someone with nothing upcoming closes their account and is signed out", async ({ page }) => {
   await signIn(page, newEmail("leaving"), "/me/privacy");
   await expect(page.getByRole("heading", { name: "ความเป็นส่วนตัวและข้อมูลของฉัน" })).toBeVisible();
   await expect(page.getByRole("button", { name: "ปิดบัญชี" })).toBeDisabled();
-  await page.getByRole("checkbox", { name: /เข้าใจแล้วว่าปิดบัญชีแล้วกู้คืนไม่ได้/ }).check();
-  await page.getByRole("button", { name: "ปิดบัญชี" }).click();
-  await expect(page).toHaveURL(/\/\?closed=1$/);
+  await closeAccount(page, () => expect(page).toHaveURL(/\/\?closed=1$/, { timeout: 5_000 }));
   await page.goto("/me/events");
   await expect(page).toHaveURL(/\/login/);
 });
