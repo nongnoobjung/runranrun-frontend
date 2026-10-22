@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ALL_AUDIENCES, orgURL, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -27,7 +28,7 @@ interface SeededEvent {
 
 /** Registers and pays for one 10K place on the seeded event straight through the API. */
 async function paidRunner(firstNameTh: string): Promise<string> {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-runner-${randomUUID()}@example.com` } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-runner-${randomUUID()}@example.com` } });
   const event = await apiCall<SeededEvent>(`/v1/events/${SEEDED_EVENT}`);
   const race = event.races.find((r) => r.code === "10K")!;
   const shirt = event.products.find((p) => p.type === "shirt")!.variants.find((v) => v.label === "M")!;
@@ -61,13 +62,12 @@ async function paidRunner(firstNameTh: string): Promise<string> {
 
 /** Signs in as the seeded organiser and opens the check-in page of the seeded event; returns the event's backoffice URL. */
 async function openCheckin(page: Page): Promise<string> {
-  await page.goto("/login?next=/organizer");
-  await page.getByLabel("อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await signInOrganizer(page, ORGANIZER);
   await expect(page.getByRole("heading", { name: "งานทั้งหมด" })).toBeVisible();
   await page.getByRole("link", { name: /Riverside Night Run 2027/ }).first().click();
   await expect(page.getByRole("heading", { name: "ภาพรวม" })).toBeVisible();
   const eventUrl = page.url();
+  expect(eventUrl).toMatch(orgURL("/[0-9a-f-]{36}/events/[^/]+$"));
   await page.goto(`${eventUrl}/checkin`);
   await expect(page.getByText(/^รายชื่อ ณ /)).toBeVisible();
   return eventUrl;
@@ -90,7 +90,7 @@ test("staff hand over a kit with no network, and it syncs once the network is ba
 
   // The page has been opened online once, so it opens again from the service worker with no network.
   await expect
-    .poll(() => page.evaluate(async () => (await (await caches.open("kao-checkin-v1")).keys()).some((r) => r.url.endsWith("/checkin"))), { timeout: 15_000 })
+    .poll(() => page.evaluate(async () => (await (await caches.open("kao-checkin-v2")).keys()).some((r) => r.url.endsWith("/checkin"))), { timeout: 15_000 })
     .toBe(true);
   await context.setOffline(true);
   await expect(status(page)).toHaveText("ออฟไลน์");
@@ -127,12 +127,12 @@ test("staff hand over a kit with no network, and it syncs once the network is ba
 test("a kit handed over offline that another table already gave out is reported after sync", async ({ page, context }) => {
   const registrationNo = await paidRunner(`ชน${Date.now().toString(36).slice(-4)}`);
   const eventUrl = await openCheckin(page);
-  const [, orgId, eventId] = new URL(eventUrl).pathname.match(/\/organizer\/([^/]+)\/events\/([^/]+)/)!;
+  const [, orgId, eventId] = new URL(eventUrl).pathname.match(/^\/([^/]+)\/events\/([^/]+)/)!;
 
   await context.setOffline(true);
   await expect(status(page)).toHaveText("ออฟไลน์");
   // Meanwhile another table, still online, hands over the same kit.
-  const { accessToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   await apiCall(`/v1/org/${orgId}/events/${eventId}/checkins`, { token: accessToken, body: { code: registrationNo, clientUuid: randomUUID() } });
 
   await scan(page, registrationNo);

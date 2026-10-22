@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { ADMIN, ALL_AUDIENCES, signInAdmin } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 /** Seeded by the API's `pnpm db:seed` as a platform superadmin. */
-const ADMIN = "admin@kao.example";
+const ADMIN_EMAIL = "admin@kao.example";
 
 async function apiCall<T>(path: string, init: { method?: string; token?: string; body?: unknown; key?: boolean } = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -19,13 +20,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
   return res.json() as Promise<T>;
 }
 
-const login = async (email: string) => (await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email } })).accessToken;
-
-async function signIn(page: Page, email: string, next: string) {
-  await page.goto(`/login?next=${encodeURIComponent(next)}`);
-  await page.getByLabel("อีเมล").fill(email);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
-}
+const login = async (email: string) => (await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email } })).accessToken;
 
 test("an admin approves a new organiser, reviews its first event and pays it out", async ({ page }) => {
   // A brand-new organiser team waiting for KYC, with one draft event ready to open.
@@ -52,7 +47,7 @@ test("an admin approves a new organiser, reviews its first event and pays it out
   await apiCall(`${org}/events/${event.id}/races/${races[0].id}/price-tiers`, { token: owner, body: { name: "ปกติ", priceSatang: 50_000, ...window } });
 
   // 1. KYC: approve the team and record its checked bank account.
-  await signIn(page, ADMIN, "/admin/organizations?status=pending_kyc");
+  await signInAdmin(page, ADMIN_EMAIL, "/organizations?status=pending_kyc");
   await page.getByRole("list", { name: "รายชื่อผู้จัด" }).getByRole("link", { name: new RegExp(orgName) }).click();
   await expect(page.getByRole("heading", { name: orgName })).toBeVisible();
   await page.getByRole("button", { name: "อนุมัติ KYC" }).click();
@@ -66,7 +61,7 @@ test("an admin approves a new organiser, reviews its first event and pays it out
 
   // 2. Review: the first opening waits; sent back once, then approved.
   expect((await apiCall<{ status: string }>(`${org}/events/${event.id}/publish`, { token: owner, body: {} })).status).toBe("pending_review");
-  await page.goto("/admin/reviews");
+  await page.goto(`${ADMIN}/reviews`);
   await page.getByRole("list", { name: "งานรอตรวจ" }).getByRole("link", { name: new RegExp(eventName) }).click();
   await page.getByLabel(/ส่งกลับให้ผู้จัดแก้/).fill("ใส่รายละเอียดเส้นทาง");
   await page.getByRole("button", { name: "ส่งกลับให้แก้" }).click();
@@ -75,7 +70,7 @@ test("an admin approves a new organiser, reviews its first event and pays it out
   expect(draft).toMatchObject({ status: "draft", review: { note: "ใส่รายละเอียดเส้นทาง" } });
 
   await apiCall(`${org}/events/${event.id}/publish`, { token: owner, body: {} });
-  await page.goto(`/admin/reviews/${event.id}`);
+  await page.goto(`${ADMIN}/reviews/${event.id}`);
   await page.getByRole("button", { name: "อนุมัติและเปิดรับสมัคร" }).click();
   await expect(page.getByText("อนุมัติแล้ว งานเปิดรับสมัครทันที")).toBeVisible();
   await page.goto(`/events/${slug}`);
@@ -104,7 +99,7 @@ test("an admin approves a new organiser, reviews its first event and pays it out
   await apiCall(`/v1/orders/${order.id}/payments`, { token: buyer, key: true, body: { method: "promptpay" } });
   await apiCall(`/v1/dev/orders/${order.id}/complete-payment`, { body: {} });
 
-  await page.goto("/admin/payouts");
+  await page.goto(`${ADMIN}/payouts`);
   const owed = page.getByRole("list", { name: "งานที่มียอดค้างจ่าย" }).getByRole("listitem").filter({ hasText: eventName });
   await owed.getByRole("button", { name: "สร้างรอบจ่าย" }).click();
   const round = page.getByRole("list", { name: "รอบจ่าย" }).getByRole("listitem").filter({ hasText: eventName });
@@ -123,6 +118,6 @@ test("an admin approves a new organiser, reviews its first event and pays it out
 });
 
 test("people without a platform role cannot open the admin pages", async ({ page }) => {
-  await signIn(page, `e2e-not-admin-${randomUUID().slice(0, 6)}@example.com`, "/admin");
+  await signInAdmin(page, `e2e-not-admin-${randomUUID().slice(0, 6)}@example.com`);
   await expect(page.getByRole("heading", { name: "ไม่พบหน้านี้" })).toBeVisible();
 });

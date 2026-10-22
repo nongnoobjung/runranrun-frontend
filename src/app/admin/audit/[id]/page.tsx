@@ -37,18 +37,18 @@ function Json({ value }: { value: unknown }) {
 async function Entry({ params }: Pick<Props, "params">) {
   const { id } = await params;
   if (!/^\d+$/.test(id)) notFound();
-  const e = await adminGet<AuditEntry>(`/audit/${id}`, `/admin/audit/${id}`);
+  const e = await adminGet<AuditEntry>(`/audit/${id}`, `/audit/${id}`);
   const info: [string, React.ReactNode][] = [
     ["เวลา", at.format(new Date(e.createdAt))],
-    ["ผู้ทำ", e.actor ? <Link href={`/admin/users/${e.actor.id}`}>{e.actor.email ?? e.actor.id}</Link> : "ระบบ"],
-    ["ผู้จัด", e.organization ? <Link href={`/admin/organizations/${e.organization.id}`}>{e.organization.nameTh}</Link> : "–"],
-    ["งาน", e.event ? <Link href={`/admin/audit?eventId=${e.event.id}`}>{e.event.nameTh}</Link> : "–"],
+    ["ผู้ทำ", e.actor ? <Link href={`/users/${e.actor.id}`}>{e.actor.email ?? e.actor.id}</Link> : "ระบบ"],
+    ["ผู้จัด", e.organization ? <Link href={`/organizations/${e.organization.id}`}>{e.organization.nameTh}</Link> : "–"],
+    ["งาน", e.event ? <Link href={`/audit?eventId=${e.event.id}`}>{e.event.nameTh}</Link> : "–"],
     ["รายการ", `${e.entityType}${e.entityId ? ` · ${e.entityId}` : ""}`],
     ["รหัสคำขอ", e.requestId ?? "–"],
   ];
   return (
     <>
-      <Link href="/admin/audit" className="self-start text-sm font-semibold">
+      <Link href="/audit" className="self-start text-sm font-semibold">
         ← บันทึกการทำงาน
       </Link>
       <PageHeader title={AUDIT_ACTION[e.action] ?? e.action} eyebrow={<code>{e.action}</code>} />

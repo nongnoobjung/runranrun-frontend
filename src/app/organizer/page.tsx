@@ -22,13 +22,13 @@ export default function OrganizerHome() {
 async function Organizations() {
   const orgs = await myOrgs();
   // Most organisers belong to one team; skip the picker for them.
-  if (orgs.length === 1) redirect(`/organizer/${orgs[0].id}`);
+  if (orgs.length === 1) redirect(`/${orgs[0].id}`);
   if (orgs.length === 0) {
     return (
       <EmptyState>
         <p>บัญชีนี้ยังไม่ได้อยู่ในทีมผู้จัดงาน</p>
         <p className="mt-1 text-sm">เปิดทีมของคุณเองแล้วส่งเอกสารให้ทีมงานก้าวตรวจ หรือขอให้เจ้าของทีมเชิญคุณเข้าทีม</p>
-        <Link href="/organizer/new" className={`${smallButtonClass} mt-4 no-underline`}>
+        <Link href="/new" className={`${smallButtonClass} mt-4 no-underline`}>
           เปิดทีมผู้จัดงาน
         </Link>
       </EmptyState>
@@ -39,7 +39,7 @@ async function Organizations() {
       <ul className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
         {orgs.map((o) => (
           <li key={o.id}>
-            <Link href={`/organizer/${o.id}`} className="flex flex-col gap-2 rounded-[28px] bg-white p-5 text-ink no-underline transition hover:-translate-y-0.5">
+            <Link href={`/${o.id}`} className="flex flex-col gap-2 rounded-[28px] bg-white p-5 text-ink no-underline transition hover:-translate-y-0.5">
               <b className="text-lg font-semibold">{o.nameTh}</b>
               <span className="flex flex-wrap gap-2">
                 <Pill label={ROLE_LABEL[o.role]} className="bg-ice text-brand" />
@@ -50,7 +50,7 @@ async function Organizations() {
           </li>
         ))}
       </ul>
-      <Link href="/organizer/new" className={`${smallGhostButtonClass} self-start`}>
+      <Link href="/new" className={`${smallGhostButtonClass} self-start`}>
         + เปิดทีมใหม่
       </Link>
     </>

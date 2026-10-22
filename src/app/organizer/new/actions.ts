@@ -18,8 +18,8 @@ export async function createOrganization(_prev: OrgFormState, fd: FormData): Pro
     },
   });
   if (!res.ok) {
-    if (res.status === 401) redirect("/login?next=/organizer/new");
+    if (res.status === 401) redirect("/login?next=/new");
     return problemState(res.problem);
   }
-  redirect(`/organizer/${res.data.id}/kyc?new=1`);
+  redirect(`/${res.data.id}/kyc?new=1`);
 }

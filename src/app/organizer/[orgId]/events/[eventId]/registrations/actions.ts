@@ -17,7 +17,7 @@ export async function revealIdDoc(orgId: string, registrationId: string): Promis
     auth: true,
   });
   if (!res.ok) {
-    if (res.status === 401) redirect("/login?next=/organizer");
+    if (res.status === 401) redirect("/login?next=/");
     return { error: problemMessage(res.problem) };
   }
   return { idDocNumber: res.data.idDocNumber };

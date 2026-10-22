@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
+import { ALL_AUDIENCES, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -22,7 +23,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published event of its own with one race and no texts or images yet. */
 async function freshEvent() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-content-${randomUUID().slice(0, 8)}`;
@@ -41,7 +42,7 @@ async function freshEvent() {
   });
   await apiCall(`${org}/events/${event.id}/races/${races[0].id}/price-tiers`, { token, body: { name: "ปกติ", priceSatang: 50_000, ...window } });
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
-  return { slug, path: `/organizer/${items[0].id}/events/${event.id}/content` };
+  return { slug, path: `/${items[0].id}/events/${event.id}/content` };
 }
 
 /** Every <img> matched has loaded real pixels. */
@@ -53,9 +54,7 @@ async function expectLoaded(page: Page, selector: string, count: number) {
 
 test("an organiser writes Thai and English content with pictures, and the event page shows it", async ({ page }) => {
   const ev = await freshEvent();
-  await page.goto(`/login?next=${encodeURIComponent(ev.path)}`);
-  await label(page, "อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
+  await signInOrganizer(page, ORGANIZER, ev.path);
   await expect(page.getByRole("heading", { name: "เนื้อหาและรูปภาพ" })).toBeVisible();
 
   // 1. Cover, then two gallery photos with captions, the second moved to the front.

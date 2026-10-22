@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
+import { ALL_AUDIENCES, ORG, orgURL, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -19,7 +20,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
  * event the other journeys register for.
  */
 async function freshEvent() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-form-${randomUUID().slice(0, 8)}`;
@@ -47,11 +48,9 @@ test("an organiser adds a required question and the runner has to answer it", as
   const ev = await freshEvent();
 
   // Organiser: add a required choice question on the form page.
-  await page.goto("/login?next=/organizer");
-  await page.getByLabel("อีเมล").fill(ORGANIZER);
-  await page.getByRole("button", { name: "เข้าสู่ระบบ", exact: true }).click();
-  await expect(page).toHaveURL(/\/organizer\/[0-9a-f-]{36}$/);
-  await page.goto(`/organizer/${ev.orgId}/events/${ev.eventId}/form`);
+  await signInOrganizer(page, ORGANIZER);
+  await expect(page).toHaveURL(orgURL("/[0-9a-f-]{36}$"));
+  await page.goto(`${ORG}/${ev.orgId}/events/${ev.eventId}/form`);
   await expect(page.getByText("ยังไม่มีคำถามเพิ่มเติม")).toBeVisible();
   await page.getByLabel("คำถาม", { exact: true }).fill("เคยวิ่งฮาล์ฟมาราธอนไหม");
   await page.getByLabel("ประเภท").selectOption({ label: "เลือกหนึ่งข้อ" });
@@ -93,11 +92,11 @@ test("an organiser adds a required question and the runner has to answer it", as
 
   // Organiser: the answer is on the runner's detail, and the question now counts one answer.
   const list = await apiCall<{ items: { id: string }[] }>(`${ev.org}/events/${ev.eventId}/registrations`, { token: ev.token });
-  await page.goto(`/organizer/${ev.orgId}/events/${ev.eventId}/registrations?selected=${list.items[0].id}`);
+  await page.goto(`${ORG}/${ev.orgId}/events/${ev.eventId}/registrations?selected=${list.items[0].id}`);
   const detail = page.getByRole("complementary", { name: /รายละเอียด/ });
   await expect(detail.getByRole("heading", { name: "คำตอบฟอร์มสมัคร" })).toBeVisible();
   await expect(detail).toContainText("เคยวิ่งฮาล์ฟมาราธอนไหม");
   await expect(detail).toContainText("ไม่เคย");
-  await page.goto(`/organizer/${ev.orgId}/events/${ev.eventId}/form`);
+  await page.goto(`${ORG}/${ev.orgId}/events/${ev.eventId}/form`);
   await expect(page.getByRole("list", { name: "คำถามเพิ่มเติม" })).toContainText("ตอบแล้ว 1 คน");
 });

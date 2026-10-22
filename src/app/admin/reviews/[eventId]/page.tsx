@@ -32,13 +32,13 @@ export default function ReviewPage({ params }: Props) {
 
 async function Review({ params }: Pick<Props, "params">) {
   const { eventId } = await params;
-  const [me, { event: e, organization: org }] = await Promise.all([adminMe(), adminGet<AdminEvent>(`/events/${eventId}`, `/admin/reviews/${eventId}`)]);
+  const [me, { event: e, organization: org }] = await Promise.all([adminMe(), adminGet<AdminEvent>(`/events/${eventId}`, `/reviews/${eventId}`)]);
   const status = EVENT_STATUS[e.status];
   const pending = e.status === "pending_review";
 
   return (
     <>
-      <Link href="/admin/reviews" className="self-start text-sm font-semibold">
+      <Link href="/reviews" className="self-start text-sm font-semibold">
         ← งานรอตรวจ
       </Link>
       <PageHeader
@@ -46,12 +46,12 @@ async function Review({ params }: Pick<Props, "params">) {
         eyebrow={
           <span className="flex flex-wrap items-center gap-2">
             <Pill label={status.label} className={status.className} />
-            <Link href={`/admin/organizations/${org.id}`}>{org.nameTh}</Link>
+            <Link href={`/organizations/${org.id}`}>{org.nameTh}</Link>
             <Pill label={ORG_STATUS[org.status].label} className={ORG_STATUS[org.status].className} />
           </span>
         }
         actions={
-          <Link href={`/admin/audit?eventId=${e.id}`} className={smallGhostButtonClass}>
+          <Link href={`/audit?eventId=${e.id}`} className={smallGhostButtonClass}>
             ดูบันทึกการทำงาน
           </Link>
         }

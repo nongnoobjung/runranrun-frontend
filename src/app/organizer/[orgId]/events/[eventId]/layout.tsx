@@ -50,7 +50,7 @@ async function Sidebar({ params }: Pick<LayoutProps<"/organizer/[orgId]/events/[
   return (
     <>
       <div className="flex flex-col gap-1.5 md:px-2.5">
-        <Link href={`/organizer/${orgId}`} className="text-[13px] text-muted no-underline hover:text-ink">
+        <Link href={`/${orgId}`} className="text-[13px] text-muted no-underline hover:text-ink">
           ← งานทั้งหมดของ {org.nameTh}
         </Link>
         <b className="leading-snug font-semibold">{event.nameTh}</b>

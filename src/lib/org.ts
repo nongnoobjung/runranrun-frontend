@@ -551,7 +551,7 @@ async function orThrow<T>(res: ApiResult<T>, next: string): Promise<T> {
 /** Organisations the signed-in user belongs to (deduplicated per request). */
 export const myOrgs = cache(async (): Promise<MyOrg[]> => {
   const res = await api<{ items: MyOrg[] }>("/v1/org", { auth: true });
-  return (await orThrow(res, "/organizer")).items;
+  return (await orThrow(res, "/")).items;
 });
 
 /** The caller's membership of one organisation, or a 404. */
@@ -563,18 +563,18 @@ export const membership = cache(async (orgId: string): Promise<MyOrg> => {
 
 export const orgEvent = cache(async (orgId: string, eventId: string): Promise<OrgEvent> => {
   const res = await api<OrgEvent>(`/v1/org/${orgId}/events/${eventId}`, { auth: true });
-  return orThrow(res, `/organizer/${orgId}/events/${eventId}`);
+  return orThrow(res, `/${orgId}/events/${eventId}`);
 });
 
 /** GET helper for backoffice pages; the path is relative to /v1/org/:orgId. */
-export async function orgGet<T>(orgId: string, path: string, next = "/organizer"): Promise<T> {
+export async function orgGet<T>(orgId: string, path: string, next = "/"): Promise<T> {
   return orThrow(await api<T>(`/v1/org/${orgId}${path}`, { auth: true }), next);
 }
 
-export const orgKyc = cache(async (orgId: string): Promise<OrgKyc> => orgGet<OrgKyc>(orgId, "/kyc", `/organizer/${orgId}/kyc`));
+export const orgKyc = cache(async (orgId: string): Promise<OrgKyc> => orgGet<OrgKyc>(orgId, "/kyc", `/${orgId}/kyc`));
 
 export function eventPath(orgId: string, eventId: string, section = ""): string {
-  return `/organizer/${orgId}/events/${eventId}${section ? `/${section}` : ""}`;
+  return `/${orgId}/events/${eventId}${section ? `/${section}` : ""}`;
 }
 
 /** Transfers and race changes in one event, newest first. */

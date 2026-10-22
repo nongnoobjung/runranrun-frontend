@@ -56,7 +56,7 @@ async function Audit({ searchParams }: Pick<Props, "searchParams">) {
   for (const k of FILTERS) if (value(k)) filters.set(k, value(k));
   const query = new URLSearchParams(filters);
   if (/^\d+$/.test(value("before"))) query.set("before", value("before"));
-  const here = `/admin/audit${filters.size ? `?${filters}` : ""}`;
+  const here = `/audit${filters.size ? `?${filters}` : ""}`;
 
   const [{ items, nextBefore }, orgs] = await Promise.all([
     adminGet<{ items: AuditItem[]; nextBefore: number | null }>(`/audit?${query}`, here),
@@ -65,7 +65,7 @@ async function Audit({ searchParams }: Pick<Props, "searchParams">) {
   const without = (k: string) => {
     const q = new URLSearchParams(filters);
     q.delete(k);
-    return `/admin/audit${q.size ? `?${q}` : ""}`;
+    return `/audit${q.size ? `?${q}` : ""}`;
   };
   // Filters only reached from a link (an event page, a user page) show as chips that can be removed.
   const chips = [
@@ -79,7 +79,7 @@ async function Audit({ searchParams }: Pick<Props, "searchParams">) {
   return (
     <>
       <PageHeader title="บันทึกการทำงาน" eyebrow="ทุกการเปลี่ยนแปลงสำคัญของผู้จัดและแอดมิน" />
-      <form action="/admin/audit" className="flex flex-col gap-3 rounded-[28px] bg-white p-5" aria-label="กรองบันทึก">
+      <form action="/audit" className="flex flex-col gap-3 rounded-[28px] bg-white p-5" aria-label="กรองบันทึก">
         {value("eventId") && <input type="hidden" name="eventId" value={value("eventId")} />}
         {value("entityId") && <input type="hidden" name="entityId" value={value("entityId")} />}
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -120,7 +120,7 @@ async function Audit({ searchParams }: Pick<Props, "searchParams">) {
             กรอง
           </button>
           {filters.size > 0 && (
-            <Link href="/admin/audit" className={smallGhostButtonClass}>
+            <Link href="/audit" className={smallGhostButtonClass}>
               ล้างตัวกรอง
             </Link>
           )}
@@ -143,7 +143,7 @@ async function Audit({ searchParams }: Pick<Props, "searchParams">) {
           {items.map((i) => (
             <li key={i.id}>
               <Link
-                href={`/admin/audit/${i.id}`}
+                href={`/audit/${i.id}`}
                 className="flex flex-col gap-0.5 rounded-[20px] bg-white px-4 py-3 text-ink no-underline hover:ring-2 hover:ring-brand"
               >
                 <span className="flex flex-wrap items-baseline gap-x-2">
@@ -168,7 +168,7 @@ async function Audit({ searchParams }: Pick<Props, "searchParams">) {
             </Link>
           )}
           {nextBefore && (
-            <Link href={`/admin/audit?${new URLSearchParams([...filters, ["before", String(nextBefore)]])}`} className={smallGhostButtonClass}>
+            <Link href={`/audit?${new URLSearchParams([...filters, ["before", String(nextBefore)]])}`} className={smallGhostButtonClass}>
               เก่ากว่า →
             </Link>
           )}

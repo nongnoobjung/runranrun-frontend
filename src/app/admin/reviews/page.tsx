@@ -25,7 +25,7 @@ export default function ReviewsPage({ searchParams }: PageProps<"/admin/reviews"
 }
 
 async function Reviews({ searchParams }: Pick<PageProps<"/admin/reviews">, "searchParams">) {
-  const [sp, { items }] = await Promise.all([searchParams, adminGet<{ items: ReviewItem[] }>("/reviews", "/admin/reviews")]);
+  const [sp, { items }] = await Promise.all([searchParams, adminGet<{ items: ReviewItem[] }>("/reviews", "/reviews")]);
   const notice = sp.approved ? "อนุมัติแล้ว งานเปิดรับสมัครทันที" : sp.rejected ? "ส่งกลับให้ผู้จัดแก้แล้ว" : null;
   return (
     <>
@@ -42,7 +42,7 @@ async function Reviews({ searchParams }: Pick<PageProps<"/admin/reviews">, "sear
         <ul className="flex flex-col gap-3" aria-label="งานรอตรวจ">
           {items.map((e) => (
             <li key={e.id}>
-              <Link href={`/admin/reviews/${e.id}`} className="flex flex-wrap items-center gap-3 rounded-[24px] bg-white p-4 text-ink no-underline hover:ring-2 hover:ring-brand sm:p-5">
+              <Link href={`/reviews/${e.id}`} className="flex flex-wrap items-center gap-3 rounded-[24px] bg-white p-4 text-ink no-underline hover:ring-2 hover:ring-brand sm:p-5">
                 <span className="flex min-w-0 flex-1 flex-col leading-snug">
                   <b className="font-semibold">{e.nameTh}</b>
                   <span className="text-[13px] text-muted">

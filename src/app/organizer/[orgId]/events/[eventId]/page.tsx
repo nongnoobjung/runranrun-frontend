@@ -4,6 +4,7 @@ import { Card, PageHeader, Pill, smallButtonClass, smallGhostButtonClass } from 
 import { baht, fmt } from "@/lib/format";
 import { can, EVENT_STATUS, eventPath, membership, orgGet, type Dashboard } from "@/lib/org";
 import { DailyChart } from "./daily-chart";
+import { siteHref } from "@/lib/hosts";
 
 export default function DashboardPage({ params }: PageProps<"/organizer/[orgId]/events/[eventId]">) {
   return (
@@ -43,9 +44,9 @@ async function Overview({ params }: Pick<PageProps<"/organizer/[orgId]/events/[e
           <>
             <Pill label={status.label} className={status.className} />
             {(d.event.status === "published" || d.event.status === "closed") && (
-              <Link href={`/events/${d.event.slug}`} className={smallGhostButtonClass} target="_blank">
+              <a href={siteHref(`/events/${d.event.slug}`)} className={smallGhostButtonClass} target="_blank">
                 ดูหน้างาน ↗
-              </Link>
+              </a>
             )}
             {can(org.role, "view_pii") && (
               <a href={eventPath(orgId, eventId, "registrations/export")} className={`${smallButtonClass} no-underline`}>

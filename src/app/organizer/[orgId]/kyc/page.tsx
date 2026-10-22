@@ -45,7 +45,7 @@ async function Kyc({ params, searchParams }: Props) {
 
   return (
     <>
-      <Link href={`/organizer/${orgId}`} className="self-start text-sm text-muted no-underline hover:text-ink">
+      <Link href={`/${orgId}`} className="self-start text-sm text-muted no-underline hover:text-ink">
         ← งานทั้งหมดของ {kyc.nameTh}
       </Link>
       <PageHeader title="ข้อมูลทีมและ KYC" eyebrow={kyc.nameTh} />
@@ -111,7 +111,7 @@ async function Kyc({ params, searchParams }: Props) {
                         <b className="font-semibold">{KYC_DOC_TYPE[d.type]}</b>
                         <span className="truncate text-[13px] text-muted">
                           {openFiles ? (
-                            <a href={`/organizer/${orgId}/kyc/documents/${d.id}`} target="_blank" rel="noreferrer">
+                            <a href={`/${orgId}/kyc/documents/${d.id}`} target="_blank" rel="noreferrer">
                               {name}
                             </a>
                           ) : (

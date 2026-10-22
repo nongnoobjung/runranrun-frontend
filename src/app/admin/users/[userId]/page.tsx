@@ -45,7 +45,7 @@ export default function UserPage({ params }: Props) {
 async function User({ params }: Pick<Props, "params">) {
   const { userId } = await params;
   if (!/^[0-9a-f-]{36}$/i.test(userId)) notFound();
-  const [me, u] = await Promise.all([adminMe(), adminGet<AdminUser>(`/users/${userId}`, `/admin/users/${userId}`)]);
+  const [me, u] = await Promise.all([adminMe(), adminGet<AdminUser>(`/users/${userId}`, `/users/${userId}`)]);
   const status = USER_STATUS[u.status];
   // Platform staff accounts are suspended by a superadmin only; nobody changes their own account.
   const canSuspend = me.can.manage_users && !u.self && u.status !== "deleted" && (u.platformRole === "user" || me.role === "superadmin");
@@ -62,7 +62,7 @@ async function User({ params }: Pick<Props, "params">) {
 
   return (
     <>
-      <Link href="/admin/users" className="self-start text-sm font-semibold">
+      <Link href="/users" className="self-start text-sm font-semibold">
         ← ผู้ใช้
       </Link>
       <PageHeader
@@ -70,11 +70,11 @@ async function User({ params }: Pick<Props, "params">) {
         eyebrow={<Pill label={status.label} className={status.className} />}
         actions={
           <>
-            <Link href={`/admin/audit?entityId=${u.id}`} className={smallGhostButtonClass}>
+            <Link href={`/audit?entityId=${u.id}`} className={smallGhostButtonClass}>
               บันทึกเกี่ยวกับบัญชีนี้
             </Link>
             {u.email && (
-              <Link href={`/admin/audit?actor=${encodeURIComponent(u.email)}`} className={smallGhostButtonClass}>
+              <Link href={`/audit?actor=${encodeURIComponent(u.email)}`} className={smallGhostButtonClass}>
                 สิ่งที่บัญชีนี้ทำ
               </Link>
             )}
@@ -126,7 +126,7 @@ async function User({ params }: Pick<Props, "params">) {
               <ul className="flex flex-col gap-1.5 text-sm">
                 {u.teams.map((t) => (
                   <li key={t.id} className="flex flex-wrap gap-2">
-                    <Link href={`/admin/organizations/${t.id}`}>{t.nameTh}</Link>
+                    <Link href={`/organizations/${t.id}`}>{t.nameTh}</Link>
                     <span className="text-muted">
                       {TEAM_ROLE[t.role] ?? t.role}
                       {!t.accepted && " · ยังไม่ตอบรับ"}

@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ADMIN, ALL_AUDIENCES, signInAdmin, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 /** Seeded by the API's `pnpm db:seed` as a platform superadmin. */
-const ADMIN = "admin@kao.example";
+const ADMIN_EMAIL = "admin@kao.example";
 
 async function apiCall<T>(path: string, init: { method?: string; token?: string; body?: unknown; key?: boolean } = {}): Promise<T> {
   const res = await fetch(`${API}${path}`, {
@@ -19,8 +20,9 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
   return res.json() as Promise<T>;
 }
 
-const login = async (email: string) => (await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email } })).accessToken;
+const login = async (email: string) => (await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email } })).accessToken;
 
+/** Signs in on the runner site. */
 async function signIn(page: Page, email: string, next: string) {
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("อีเมล").fill(email);
@@ -100,7 +102,7 @@ test("an admin sets an organiser's fee, suspends a runner, and finds both in the
   const before = await paidOrder(ev, `e2e-tools-early-${tag}@example.com`);
 
   // 1. The organiser's own rate: 5% + ฿10 per runner, from now.
-  await signIn(page, ADMIN, `/admin/organizations/${ev.orgId}`);
+  await signInAdmin(page, ADMIN_EMAIL, `/organizations/${ev.orgId}`);
   await expect(page.getByRole("heading", { name: ev.orgName })).toBeVisible();
   await expect(page.getByText(/ใช้อัตรา default ของแพลตฟอร์ม/)).toBeVisible();
   await page.getByLabel("% ของยอดขาย").fill("5");
@@ -113,7 +115,7 @@ test("an admin sets an organiser's fee, suspends a runner, and finds both in the
   // 2. A new order pays the new rate (5% of ฿500 + ฿10 = ฿35); the earlier one keeps its fee.
   const after = await paidOrder(ev, runnerEmail);
   const organiser = await (await browser.newContext()).newPage();
-  await signIn(organiser, ev.ownerEmail, `/organizer/${ev.orgId}/events/${ev.eventId}/finance`);
+  await signInOrganizer(organiser, ev.ownerEmail, `/${ev.orgId}/events/${ev.eventId}/finance`);
   await expect(organiser.getByRole("heading", { level: 1, name: "การเงิน" })).toBeVisible();
   const rows = organiser.getByRole("row");
   await expect(rows.filter({ hasText: after })).toContainText("−฿35");
@@ -125,7 +127,7 @@ test("an admin sets an organiser's fee, suspends a runner, and finds both in the
   await signIn(runner, runnerEmail, "/me/privacy");
   await expect(runner).toHaveURL(/\/me\/privacy/);
 
-  await page.goto("/admin/users");
+  await page.goto(`${ADMIN}/users`);
   await page.getByLabel("อีเมลหรือชื่อ").fill(runnerEmail);
   await page.getByRole("button", { name: "ค้นหา" }).click();
   await page
@@ -152,7 +154,7 @@ test("an admin sets an organiser's fee, suspends a runner, and finds both in the
   await expect(page.getByRole("heading", { name: "ระงับบัญชีผู้ใช้" })).toBeVisible();
   await expect(page.getByText('"reason": "ทดสอบระงับบัญชี"')).toBeVisible();
 
-  await page.goto(`/admin/organizations/${ev.orgId}`);
+  await page.goto(`${ADMIN}/organizations/${ev.orgId}`);
   await page.getByRole("link", { name: "ดูบันทึกการทำงาน" }).click();
   await expect(page).toHaveURL(new RegExp(`organizationId=${ev.orgId}`));
   await page.getByLabel("การกระทำ (ขึ้นต้นด้วย)").fill("admin.platform_fee");

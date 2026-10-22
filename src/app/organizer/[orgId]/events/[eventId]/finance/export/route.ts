@@ -9,7 +9,7 @@ const FORWARDED = ["status"] as const;
  */
 export async function GET(req: NextRequest, ctx: RouteContext<"/organizer/[orgId]/events/[eventId]/finance/export">) {
   const { orgId, eventId } = await ctx.params;
-  const back = `/organizer/${orgId}/events/${eventId}/finance`;
+  const back = `/${orgId}/events/${eventId}/finance`;
   const token = await getToken();
   if (!token) return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(back)}`, req.url));
 

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ALL_AUDIENCES, ORG, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -20,7 +21,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published one-race event of its own (฿500, 80% back until race day), so refunds never touch the seeded event. */
 async function freshEvent() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-refund-${randomUUID().slice(0, 8)}`;
@@ -42,12 +43,12 @@ async function freshEvent() {
     body: { name: "ปกติ", priceSatang: 50_000, startsAt: new Date(now - 86_400_000).toISOString(), endsAt: new Date(now + 30 * 86_400_000).toISOString() },
   });
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
-  return { token, eventId: event.id, raceId: races[0].id, path: `/organizer/${items[0].id}/events/${event.id}` };
+  return { token, eventId: event.id, raceId: races[0].id, path: `/${items[0].id}/events/${event.id}` };
 }
 
 /** Pays for one place as `email` straight through the API and returns the registration id. */
 async function paidRunner(ev: Awaited<ReturnType<typeof freshEvent>>, email: string, firstNameEn: string): Promise<string> {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email } });
   const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token, body: { eventId: ev.eventId, races: [{ raceId: ev.raceId, quantity: 1 }] } });
   const order = await apiCall<{ id: string }>("/v1/orders", {
     token,
@@ -103,7 +104,7 @@ test("a runner asks for a refund and the organiser approves and records the tran
   await expect(runner.getByRole("status")).toContainText("ส่งคำขอคืนเงิน ฿400 แล้ว รอผู้จัดตอบ");
 
   // Organiser: approve, then record the transfer.
-  await signIn(page, ORGANIZER, `${ev.path}/requests`);
+  await signInOrganizer(page, ORGANIZER, `${ev.path}/requests`);
   const request = page.getByRole("list", { name: "คำขอคืนเงิน" }).getByRole("listitem").filter({ hasText: "ใจดี ขอคืน" });
   await expect(request).toContainText("ติดธุระ");
   await expect(request).toContainText("1234567890");
@@ -125,7 +126,7 @@ test("an organiser cancels a place from the runner detail with a partial refund"
   const ev = await freshEvent();
   const registrationId = await paidRunner(ev, `e2e-cancel-${randomUUID().slice(0, 8)}@example.com`, "Lee");
 
-  await signIn(page, ORGANIZER, `${ev.path}/registrations?selected=${registrationId}`);
+  await signInOrganizer(page, ORGANIZER, `${ev.path}/registrations?selected=${registrationId}`);
   const detail = page.getByRole("complementary", { name: /รายละเอียด/ });
   await detail.getByRole("button", { name: "ยกเลิกสิทธิ์ / คืนเงิน" }).click();
   await expect(detail.getByLabel(/คืนเงิน \(บาท\)/)).toHaveValue("400");
@@ -134,7 +135,7 @@ test("an organiser cancels a place from the runner detail with a partial refund"
   await detail.getByRole("button", { name: "ยืนยันยกเลิกสิทธิ์" }).click();
   await expect(detail.getByText("คืนเงินแล้ว")).toBeVisible();
 
-  await page.goto(`${ev.path}/requests`);
+  await page.goto(`${ORG}${ev.path}/requests`);
   const item = page.getByRole("listitem").filter({ hasText: "ใจดี ขอคืน" });
   await expect(item).toContainText("ผู้จัดยกเลิก");
   await expect(item).toContainText("฿250");

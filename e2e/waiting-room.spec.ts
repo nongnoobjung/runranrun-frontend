@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ALL_AUDIENCES, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -16,7 +17,7 @@ async function apiCall<T>(path: string, init: { method?: string; token?: string;
 
 /** A published event of its own with one open 5K, so turning its waiting room on touches nobody else's test. */
 async function openEvent() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-room-${randomUUID().slice(0, 8)}`;
@@ -37,7 +38,7 @@ async function openEvent() {
     body: { name: "ปกติ", priceSatang: 65_000, startsAt: new Date(now - 86_400_000).toISOString(), endsAt: new Date(now + 30 * 86_400_000).toISOString() },
   });
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
-  return { slug, eventId: event.id, path: `/organizer/${items[0].id}/events/${event.id}` };
+  return { slug, eventId: event.id, path: `/${items[0].id}/events/${event.id}` };
 }
 
 async function signIn(page: Page, email: string, next: string) {
@@ -52,7 +53,7 @@ test("a runner waits in the queue of a busy event, is let in and reaches checkou
   // The organiser turns the waiting room on from the event page, letting one runner in a minute.
   const theirs = await browser.newContext();
   const organiser = await theirs.newPage();
-  await signIn(organiser, ORGANIZER, `${ev.path}/edit`);
+  await signInOrganizer(organiser, ORGANIZER, `${ev.path}/edit`);
   await organiser.getByLabel("ให้นักวิ่งเข้าคิวก่อนเลือกระยะ").check();
   await organiser.getByLabel(/ปล่อยเข้าสมัคร \(คนต่อนาที\)/).fill("1");
   await organiser.getByRole("button", { name: "บันทึกข้อมูลงาน" }).click();
@@ -60,7 +61,7 @@ test("a runner waits in the queue of a busy event, is let in and reaches checkou
   await theirs.close();
 
   // Someone got there first and takes the first place let in.
-  const { accessToken: early } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: `e2e-early-${randomUUID()}@example.com` } });
+  const { accessToken: early } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: `e2e-early-${randomUUID()}@example.com` } });
   await apiCall("/v1/checkout/queue", { token: early, body: { eventId: ev.eventId } });
   await apiCall(`/v1/dev/events/${ev.eventId}/queue/admit`, { body: { count: 1 } });
 

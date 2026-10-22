@@ -5,6 +5,7 @@ import { Card, EmptyState, PageHeader, Pill } from "@/components/backoffice";
 import { duration } from "@/lib/format";
 import { can, eventPath, membership, orgEvent, orgGet, type ResultsSummary } from "@/lib/org";
 import { ImportResultsForm, IssueList, PublishButton } from "./results-forms";
+import { siteHref } from "@/lib/hosts";
 
 export const metadata: Metadata = { title: "ผลการแข่งขัน" };
 
@@ -54,9 +55,9 @@ async function Results({ params, searchParams }: Props) {
       {summary.publishedAt && (
         <p className="rounded-3xl bg-ok-soft px-5 py-3 text-sm text-ok">
           นักวิ่งดูผลได้ที่{" "}
-          <Link href={`/events/${event.slug}/results`} className="font-semibold text-ok">
+          <a href={siteHref(`/events/${event.slug}/results`)} className="font-semibold text-ok">
             หน้าผลของงาน
-          </Link>{" "}
+          </a>{" "}
           ตั้งแต่ {at.format(new Date(summary.publishedAt))} นำเข้าไฟล์ใหม่ได้ ผลบนหน้างานจะเปลี่ยนตาม
         </p>
       )}

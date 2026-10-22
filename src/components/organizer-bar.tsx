@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { logout } from "@/app/actions";
+import { siteHref } from "@/lib/hosts";
 import { Logo } from "./ui";
 
 export function OrganizerBadge() {
@@ -17,9 +17,9 @@ export function OrganizerBar({ children }: { children?: React.ReactNode }) {
           {children}
         </div>
         <div className="flex items-center gap-1">
-          <Link href="/" className="px-3 py-2 text-sm text-muted no-underline hover:text-ink">
+          <a href={siteHref("/")} className="px-3 py-2 text-sm text-muted no-underline hover:text-ink">
             หน้าเว็บนักวิ่ง
-          </Link>
+          </a>
           <form action={logout}>
             <button type="submit" className="px-3 py-2 text-sm text-muted hover:text-ink">
               ออกจากระบบ

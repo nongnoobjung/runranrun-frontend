@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
+import { ALL_AUDIENCES, signInOrganizer } from "./hosts";
 
 const API = process.env.API_URL ?? "http://localhost:4000";
 const ORGANIZER = "organizer@riverside.example";
@@ -22,7 +23,7 @@ const idNumber = () => `1${Date.now().toString().slice(-9)}${Math.floor(Math.ran
 
 /** A published event of its own (5K ฿500, 10K ฿800) that allows transfers and race changes, with one paid 5K place. */
 async function eventWithPlace() {
-  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email: ORGANIZER } });
+  const { accessToken: token } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email: ORGANIZER } });
   const { items } = await apiCall<{ items: { id: string }[] }>("/v1/org", { token });
   const org = `/v1/org/${items[0].id}`;
   const slug = `e2e-move-${randomUUID().slice(0, 8)}`;
@@ -47,7 +48,7 @@ async function eventWithPlace() {
   await apiCall(`${org}/events/${event.id}/publish`, { token, body: {} });
 
   const email = `e2e-owner-${randomUUID().slice(0, 8)}@example.com`;
-  const { accessToken: buyerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { email } });
+  const { accessToken: buyerToken } = await apiCall<{ accessToken: string }>("/v1/dev/login", { body: { audience: ALL_AUDIENCES, email } });
   const session = await apiCall<{ id: string }>("/v1/checkout/sessions", { token: buyerToken, body: { eventId: event.id, races: [{ raceId: raceIds["5K"], quantity: 1 }] } });
   const order = await apiCall<{ id: string; registrations: { id: string }[] }>("/v1/orders", {
     token: buyerToken,
@@ -69,7 +70,7 @@ async function eventWithPlace() {
   });
   await apiCall(`/v1/orders/${order.id}/payments`, { token: buyerToken, key: true, body: { method: "promptpay" } });
   await apiCall(`/v1/dev/orders/${order.id}/complete-payment`, { body: {} });
-  return { email, registrationId: order.registrations[0].id, path: `/organizer/${items[0].id}/events/${event.id}` };
+  return { email, registrationId: order.registrations[0].id, path: `/${items[0].id}/events/${event.id}` };
 }
 
 async function signIn(page: Page, email: string, next: string) {
@@ -118,7 +119,7 @@ test("a runner hands their place to a friend, who takes it with their own detail
   await expect(page.getByText("ยังไม่มีงานที่สมัครไว้")).toBeVisible();
 
   const organiser = await (await browser.newContext()).newPage();
-  await signIn(organiser, ORGANIZER, `${ev.path}/changes`);
+  await signInOrganizer(organiser, ORGANIZER, `${ev.path}/changes`);
   await expect(organiser.getByRole("list", { name: "รายการโอนสิทธิ์" })).toContainText("มะลิ สุขใส");
   await expect(organiser.getByRole("list", { name: "รายการโอนสิทธิ์" })).toContainText("โอนแล้ว");
 });
@@ -143,7 +144,7 @@ test("a runner moves up to a longer race and pays the difference", async ({ page
   await expect(page.locator("span.text-6xl")).toHaveText("0501");
 
   const organiser = await (await browser.newContext()).newPage();
-  await signIn(organiser, ORGANIZER, `${ev.path}/changes`);
+  await signInOrganizer(organiser, ORGANIZER, `${ev.path}/changes`);
   await expect(organiser.getByRole("list", { name: "รายการเปลี่ยนระยะ" })).toContainText("5K → 10K");
   await expect(organiser.getByRole("list", { name: "รายการเปลี่ยนระยะ" })).toContainText("เปลี่ยนแล้ว");
 });

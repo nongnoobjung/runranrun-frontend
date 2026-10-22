@@ -26,7 +26,7 @@ export async function orgMutation<T = unknown>(
 ): Promise<MutationResult<T>> {
   const res = await api<T>(`/v1/org/${orgId}${path}`, body instanceof FormData ? { method, form: body, auth: true } : { method, body, auth: true });
   if (!res.ok) {
-    if (res.status === 401) redirect(`/login?next=${encodeURIComponent("/organizer")}`);
+    if (res.status === 401) redirect(`/login?next=${encodeURIComponent("/")}`);
     return { ok: false, state: problemState(res.problem) };
   }
   refresh();

@@ -4,6 +4,10 @@ import { defineConfig, devices } from "@playwright/test";
  * End-to-end tests drive the real web app against a running runranrun-api
  * (PAYMENT_GATEWAY=fake, ENABLE_DEV_ENDPOINTS=true, seeded with `pnpm db:seed`).
  * Start the API first; the web app is built and started here unless one is already on WEB_URL.
+ *
+ * WEB_URL is the runner site (baseURL). The organiser backoffice and admin are the same server on organizer.localhost
+ * and admin.localhost at the same port (e2e/hosts.ts). Chromium resolves *.localhost to loopback by itself, and so does
+ * Node's resolver on macOS and on Ubuntu (systemd-resolved), which page.request uses; (Ubuntu CI runners included).
  */
 const webURL = new URL(process.env.WEB_URL ?? "http://localhost:3000");
 const webPort = webURL.port || (webURL.protocol === "https:" ? "443" : "80");
